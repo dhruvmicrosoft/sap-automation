@@ -1,7 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 DOCUMENTATION = """
@@ -93,31 +94,34 @@ display = Display()
 
 TOKEN_ACQUIRED = False
 
-token_params = {
-    'api-version': '2018-02-01',
-    'resource': 'https://vault.azure.net'
-}
-token_headers = {
-    'Metadata': 'true'
-}
+token_params = {"api-version": "2018-02-01", "resource": "https://vault.azure.net"}
+token_headers = {"Metadata": "true"}
 token = None
 try:
-    token_res = requests.get('http://169.254.169.254/metadata/identity/oauth2/token', params=token_params, headers=token_headers)
+    token_res = requests.get(
+        "http://169.254.169.254/metadata/identity/oauth2/token",
+        params=token_params,
+        headers=token_headers,
+    )
     token = token_res.json().get("access_token")
     if token is not None:
         TOKEN_ACQUIRED = True
     else:
-        display.v('Successfully called MSI endpoint, but no token was available. Will use service principal if provided.')
+        display.v(
+            "Successfully called MSI endpoint, but no token was available. Will use service principal if provided."
+        )
 except requests.exceptions.RequestException:
-    display.v('Unable to fetch MSI token. Will use service principal if provided.')
+    display.v("Unable to fetch MSI token. Will use service principal if provided.")
     TOKEN_ACQUIRED = False
-
 
 
 def lookup_secret_non_msi(terms, vault_url, kwargs):
     import logging
-    logging.getLogger('msrestazure.azure_active_directory').addHandler(logging.NullHandler())
-    logging.getLogger('msrest.service_client').addHandler(logging.NullHandler())
+
+    logging.getLogger("msrestazure.azure_active_directory").addHandler(
+        logging.NullHandler()
+    )
+    logging.getLogger("msrest.service_client").addHandler(logging.NullHandler())
 
     try:
         from azure.common.credentials import ServicePrincipalCredentials
@@ -125,31 +129,31 @@ def lookup_secret_non_msi(terms, vault_url, kwargs):
         from msrest.exceptions import AuthenticationError, ClientRequestError
         from azure.keyvault.models.key_vault_error import KeyVaultErrorException
     except ImportError:
-        raise AnsibleError('The azure_keyvault_secret lookup plugin requires azure.keyvault and azure.common.credentials to be installed.')
+        raise AnsibleError(
+            "The azure_keyvault_secret lookup plugin requires azure.keyvault and azure.common.credentials to be installed."
+        )
 
-    client_id = kwargs.pop('client_id', None)
-    secret = kwargs.pop('secret', None)
-    tenant_id = kwargs.pop('tenant_id', None)
+    client_id = kwargs.pop("client_id", None)
+    secret = kwargs.pop("secret", None)
+    tenant_id = kwargs.pop("tenant_id", None)
 
     try:
         credentials = ServicePrincipalCredentials(
-            client_id=client_id,
-            secret=secret,
-            tenant=tenant_id
+            client_id=client_id, secret=secret, tenant=tenant_id
         )
         client = KeyVaultClient(credentials)
     except AuthenticationError:
-        raise AnsibleError('Invalid credentials provided.')
+        raise AnsibleError("Invalid credentials provided.")
 
     ret = []
     for term in terms:
         try:
-            secret_val = client.get_secret(vault_url, term, '').value
+            secret_val = client.get_secret(vault_url, term, "").value
             ret.append(secret_val)
         except ClientRequestError:
-            raise AnsibleError('Error occurred in request')
+            raise AnsibleError("Error occurred in request")
         except KeyVaultErrorException:
-            raise AnsibleError('Failed to fetch secret ' + term + '.')
+            raise AnsibleError("Failed to fetch secret " + term + ".")
     return ret
 
 
@@ -158,20 +162,26 @@ class LookupModule(LookupBase):
     def run(self, terms, variables, **kwargs):
 
         ret = []
-        vault_url = kwargs.pop('vault_url', None)
+        vault_url = kwargs.pop("vault_url", None)
         if vault_url is None:
-            raise AnsibleError('Failed to get valid vault url.')
+            raise AnsibleError("Failed to get valid vault url.")
         if TOKEN_ACQUIRED:
-            secret_params = {'api-version': '2016-10-01'}
-            secret_headers = {'Authorization': 'Bearer ' + token}
+            secret_params = {"api-version": "2016-10-01"}
+            secret_headers = {"Authorization": "Bearer " + token}
             for term in terms:
                 try:
-                    secret_res = requests.get(vault_url + '/secrets/' + term, params=secret_params, headers=secret_headers)
+                    secret_res = requests.get(
+                        vault_url + "/secrets/" + term,
+                        params=secret_params,
+                        headers=secret_headers,
+                    )
                     ret.append(secret_res.json()["value"])
                 except requests.exceptions.RequestException:
-                    raise AnsibleError('Failed to fetch secret: ' + term + ' via MSI endpoint.')
+                    raise AnsibleError(
+                        "Failed to fetch secret: " + term + " via MSI endpoint."
+                    )
                 except KeyError:
-                    raise AnsibleError('Failed to fetch secret ' + term + '.')
+                    raise AnsibleError("Failed to fetch secret " + term + ".")
             return ret
         else:
             return lookup_secret_non_msi(terms, vault_url, kwargs)
