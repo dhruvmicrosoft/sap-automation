@@ -65,7 +65,7 @@
 
 # Import this task only if the node_tier is ase.
 - name:                                "2.6 SAP Mounts: - Import SYBASE tasks"
-  ansible.builtin.import_tasks:        "components/2.6.6-sybase-mounts.yaml"
+  ansible.builtin.import_tasks:        "components/2.6.6-sysbase-mounts.yaml"
   when: node_tier == "sybase"
 
 
