@@ -95,7 +95,7 @@
       retries:                         10
       delay:                           30
       changed_when:                    false
-      when:                            ansible_distribution_major_version in ["8", "9"]
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
 
 
     - name:                            "5.6 SCSERS - RHEL - SCS - Check if NFS mount /usr/sap/{{ sap_sid | upper }}/SYS is available before proceeding"
@@ -240,7 +240,7 @@
       retries:                         10
       delay:                           30
       changed_when:                    false
-      when:                            ansible_distribution_major_version in ["8", "9"]
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
 
 
     - name:                            "5.6 SCSERS - RHEL - ERS - List NFS mounts"

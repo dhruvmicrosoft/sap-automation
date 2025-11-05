@@ -38,7 +38,7 @@
       ansible.builtin.shell:           pcs property set maintenance-mode=true
 
     - name:                            "5.5.4.1 HANA Cluster configuration - Check if the pacemaker package version is greater than pacemaker-2.0.4"
-      when:                            ansible_distribution_major_version in ["8", "9"]
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
       ansible.builtin.set_fact:
         is_pcmk_ver_gt_204:            "{{ ansible_facts.packages['pacemaker'][0].version is version('2.0.4', '>') | default(false) }}"
 
@@ -79,11 +79,11 @@
           failed_when:                 sap_hana_master.rc > 1
 
 
-    - name:                            "5.5.4.1 HANA Cluster configuration - Create SAP HANA resources for RHEL 8.x and 9.x"
-      when:                            ansible_distribution_major_version in ["8", "9"]
+    - name:                            "5.5.4.1 HANA Cluster configuration - Create SAP HANA resources for RHEL 8.x and newer"
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
       block:
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource is created on RHEL 8 & 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource is created on RHEL 8+"
           ansible.builtin.shell: >
                                        pcs resource create SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }} SAPHanaTopology \
                                          SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }}  meta clone-node-max=1 interleave=true \
@@ -92,14 +92,14 @@
           register:                    sap_hana_topology
           failed_when:                 sap_hana_topology.rc > 1
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource clone is created on RHEL 8 & 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource clone is created on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs resource clone SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }} \
                                          meta clone-node-max=1 interleave=true
           register:                    sap_hana_clone_topology
           failed_when:                 sap_hana_clone_topology.rc > 1
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8 & 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs resource create SAPHana_{{ db_sid | upper }}_{{ db_instance_number }} SAPHanaController \
                                          SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }} \
@@ -113,7 +113,7 @@
           register:                    sap_hana
           failed_when:                 sap_hana.rc > 1
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8 & 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs resource promotable  SAPHana_{{ db_sid | upper }}_{{ db_instance_number }} \
                                          meta master-max="1" clone-node-max=1 interleave=true
@@ -168,18 +168,18 @@
           failed_when:                 constraint.rc > 1
 
 
-    - name:                            "5.5.4.1 HANA Cluster configuration - Create constraints for SAP HANA and Virtual IP for RHEL 8.x and 9.x"
-      when:                            ansible_distribution_major_version in ["8", "9"]
+    - name:                            "5.5.4.1 HANA Cluster configuration - Create constraints for SAP HANA and Virtual IP for RHEL 8.x and newer"
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
       block:
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the order constraint for the SAP HANA Topology is configured on RHEL 8 or 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the order constraint for the SAP HANA Topology is configured on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs constraint order SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }}-clone then \
                                          SAPHana_{{ db_sid | upper }}_{{ db_instance_number }}-clone symmetrical=false
           register:                    constraint
           failed_when:                 constraint.rc > 1
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the Virtual IP group is configured to the Master node on RHEL 8 or 9"
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the Virtual IP group is configured to the Master node on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs constraint colocation add g_ip_{{ db_sid | upper }}_{{ db_instance_number }} with \
                                          master SAPHana_{{ db_sid | upper }}_{{ db_instance_number }}-clone 4000
@@ -319,17 +319,17 @@
           failed_when:                 constraint.rc > 1
           when: ansible_distribution_major_version == "7"
 
-        - name:                        "5.5.4.1 HANA Cluster configuration - configure constraints on RHEL 8.x or 9.x"
-          when: ansible_distribution_major_version in ["8", "9"]
+        - name:                        "5.5.4.1 HANA Cluster configuration - configure constraints on RHEL 8.x and newer"
+          when: ansible_distribution_major_version in ["8", "9", "10"]
           block:
-            - name:                    "5.5.4.1 HANA Cluster configuration - configure location constraints on RHEL 8.x or 9.x"
+            - name:                    "5.5.4.1 HANA Cluster configuration - configure location constraints on RHEL 8.x and newer"
               ansible.builtin.shell: >
                                        pcs constraint location SAPHana_{{ db_sid | upper }}_{{ db_instance_number }}-clone \
                                          rule score=-INFINITY attr_hana_{{ db_sid | upper }}_NFS_1_active ne true and attr_hana_{{ db_sid | upper }}_NFS_2_active ne true
               register:                constraint
               failed_when:             constraint.rc > 1
 
-            - name:                    "5.5.4.1 HANA Cluster configuration - configure ordering constraints for SAPHana clone RHEL 8.x or 9.x"
+            - name:                    "5.5.4.1 HANA Cluster configuration - configure ordering constraints for SAPHana clone RHEL 8.x and newer"
               ansible.builtin.shell: >
                                        pcs constraint order stop SAPHana_{{ db_sid | upper }}_{{ db_instance_number }}-clone then stop {{ item.group_name }} symmetrical=false
               register:                constraint
@@ -340,7 +340,7 @@
                 loop_var:              item
               failed_when:             constraint.rc > 1
 
-            - name:                    "5.5.4.1 HANA Cluster configuration - configure ordering constraints for SAPHANA topology clone RHEL 8.x or 9.x"
+            - name:                    "5.5.4.1 HANA Cluster configuration - configure ordering constraints for SAPHANA topology clone RHEL 8.x and newer"
               ansible.builtin.shell: >
                                        pcs constraint order stop SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }}-clone then stop {{ item.group_name }} symmetrical=false
               register:                constraint
@@ -410,7 +410,7 @@
       retries:                         12
       delay:                           10
       until:                           "(primary_instance_name + ' ' + secondary_instance_name) in cluster_stable_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in cluster_stable_check.stdout"
-      when:                            ansible_distribution_major_version != "8" and ansible_distribution_major_version != "9"
+      when:                            ansible_distribution_major_version != "8" and ansible_distribution_major_version != "9" and ansible_distribution_major_version != "10"
 
     # '*' is a special character in regexp and needs to be escaped for literal matching
     # if we are worried about character spacing across distros we can match for '\* Online:'
@@ -420,7 +420,7 @@
       retries:                         12
       delay:                           10
       until:                           "(primary_instance_name + ' ' + secondary_instance_name) in cluster_stable_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in cluster_stable_check.stdout"
-      when:                            ansible_distribution_major_version in ["8", "9"]
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
 
 
     # the leading spaces are irrelevant here as we are looking for *<space>Started:
@@ -430,15 +430,15 @@
       retries:                         12
       delay:                           10
       until:                           "(primary_instance_name + ' ' + secondary_instance_name) in hana_cluster_resource_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in hana_cluster_resource_check.stdout"
-      when:                            ansible_distribution_major_version != "8" and ansible_distribution_major_version != "9"
+      when:                            ansible_distribution_major_version != "8" and ansible_distribution_major_version != "9" and ansible_distribution_major_version != "10"
 
-    - name:                            "5.5.4.1 HANA Cluster configuration - Ensure Cluster resources are started on RHEL 8 or 9"
+    - name:                            "5.5.4.1 HANA Cluster configuration - Ensure Cluster resources are started on RHEL 8 and newer"
       ansible.builtin.shell:           set -o pipefail && pcs resource status | grep '\* Started:'
       register:                        hana_cluster_resource_check
       retries:                         12
       delay:                           10
       until:                           "(primary_instance_name + ' ' + secondary_instance_name) in hana_cluster_resource_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in hana_cluster_resource_check.stdout"
-      when:                            ansible_distribution_major_version in ["8", "9"]
+      when:                            ansible_distribution_major_version in ["8", "9", "10"]
 
 # End of HANA clustering resources
 
