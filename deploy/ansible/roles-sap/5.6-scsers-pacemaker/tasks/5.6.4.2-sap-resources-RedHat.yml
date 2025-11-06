@@ -9,6 +9,14 @@
 # [1] Create the SAP cluster resources
 # If using enqueue server 1 architecture (ENSA1), define the resources as follows:
 
+- name:                                "5.6 SCSERS - RHEL - Debug ENSA variables"
+  ansible.builtin.debug:
+    msg:
+      - "ENSA1: {{ ensa1 | default('ENSA1 NOT DEFINED') }}"
+      - "ENSA2: {{ ensa2 | default('ENSA2 NOT DEFINED') }}"
+      - "Primary instance: {{ primary_instance_name }}"
+      - "Current host: {{ inventory_hostname }}"
+
 - name:                                "5.6 SCSERS - RHEL - ENSA1 - SAP Resources - Cluster Configuration after Install"
   when:
     - inventory_hostname == primary_instance_name
