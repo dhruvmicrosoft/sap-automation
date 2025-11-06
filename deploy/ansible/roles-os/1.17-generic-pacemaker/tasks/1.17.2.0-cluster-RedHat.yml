@@ -291,7 +291,18 @@
       ansible.builtin.command:         pcs property set priority-fencing-delay=15
 
     - name:                            "1.17 Generic Pacemaker - Update Monitor interval"
-      ansible.builtin.command:         pcs resource update rsc_st_azure op monitor interval=3600
+      ansible.builtin.shell: |
+                                       if [ "{{ ansible_distribution_major_version }}" -eq 10 ]; then
+                                         pcs stonith update rsc_st_azure op monitor interval=3600 || \
+                                         pcs resource update rsc_st_azure op monitor interval=3600
+                                       else
+                                         pcs resource update rsc_st_azure op monitor interval=3600
+                                       fi
+      register:                        update_monitor
+      failed_when:
+                                       - update_monitor.rc not in [0, 2]
+                                       - "'Error:' in update_monitor.stderr"
+      changed_when:                    "'interval' in update_monitor.stderr or 'interval' in update_monitor.stdout"
 
     - name:                            "1.17 Generic Pacemaker - Ensure the STONITH action is set to reboot"
       ansible.builtin.command:         pcs property set stonith-action=reboot
@@ -339,8 +350,19 @@
                                        pcmk_host_list="{{ primary_instance_name }} {{ secondary_instance_name }}"
                                        timeout=30
 
-    - name:                            "1.17 Generic Pacemaker - Update Monitor interval"
-      ansible.builtin.command:         pcs resource update rsc_st_kdump op monitor interval=3600
+    - name:                            "1.17 Generic Pacemaker - Update Monitor interval for kdump"
+      ansible.builtin.shell: |
+                                       if [ "{{ ansible_distribution_major_version }}" -eq 10 ]; then
+                                         pcs stonith update rsc_st_kdump op monitor interval=3600 || \
+                                         pcs resource update rsc_st_kdump op monitor interval=3600
+                                       else
+                                         pcs resource update rsc_st_kdump op monitor interval=3600
+                                       fi
+      register:                        update_kdump_monitor
+      failed_when:
+                                       - update_kdump_monitor.rc not in [0, 2]
+                                       - "'Error:' in update_kdump_monitor.stderr"
+      changed_when:                    "'interval' in update_kdump_monitor.stderr or 'interval' in update_kdump_monitor.stdout"
 
     # for each node in the play, set the fence_kdump fencing device as the first fencing device to be used
     - name:                            "1.17 Generic Pacemaker - Set the fence_kdump fencing device as the first for {{ primary_instance_name }}"
