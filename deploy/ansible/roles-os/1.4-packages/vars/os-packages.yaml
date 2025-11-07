@@ -333,6 +333,7 @@ packages:
     - { tier: 'os',     package: 'krb5-libs',                                    node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'libicu',                                       node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'libnsl',                                       node_tier: 'all',            state: 'present' }
+    - { tier: 'os',     package: 'libxcrypt-compat',                             node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'lm_sensors',                                   node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'lvm2',                                         node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'net-tools',                                    node_tier: 'all',            state: 'present' }
