@@ -87,12 +87,12 @@
   when:
     - distribution_id in ['redhat7', 'redhat8', 'redhat9']
 
-#only for debugging purposes
+# only for debugging purposes
 - name:                                "2.10.1 sap-notes: - Save SELinux status"
   ansible.builtin.command:             getenforce
   register:                            selinux_status
 
-#only for debugging purposes
+# only for debugging purposes
 - name:                               "2.10.1 sap-notes: - Display SELinux status"
   ansible.builtin.debug:
     msg:                               "SELinux status: {{ selinux_status.stdout }}"

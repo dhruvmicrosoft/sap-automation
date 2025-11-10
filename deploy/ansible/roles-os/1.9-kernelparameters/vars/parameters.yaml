@@ -249,7 +249,7 @@ parameters:
     # this is not required in newer kernels as per 2382421
     # - { tier: 'os', name: 'net.ipv4.tcp_tw_recycle',                       value: '0',                      state: 'present' }
     - { tier: 'ha',    node_tier: 'all',    name: 'net.ipv4.tcp_tw_reuse',                      value: '0',                    state: 'present' }
-    
+
   redhat10:
     - { tier: 'os',    node_tier: 'all',     name: 'fs.protected_fifos',                         value: '2',                    state: 'present' }
     - { tier: 'os',    node_tier: 'all',     name: 'fs.protected_regular',                       value: '2',                    state: 'present' }
