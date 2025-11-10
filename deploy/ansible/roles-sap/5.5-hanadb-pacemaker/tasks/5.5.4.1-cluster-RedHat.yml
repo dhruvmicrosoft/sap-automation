@@ -86,7 +86,7 @@
         - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource is created on RHEL 8+"
           ansible.builtin.shell: >
                                        pcs resource create SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }} SAPHanaTopology \
-                                         SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }}  meta clone-node-max=1 interleave=true \
+                                         SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }}  meta clone-max=2 clone-node-max=1 interleave=true \
                                          op methods interval=0s timeout=5 \
                                          op start timeout=600 op stop timeout=300 op monitor interval=10 timeout=600
           register:                    sap_hana_topology
@@ -95,7 +95,7 @@
         - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the HANA topology resource clone is created on RHEL 8 and newer"
           ansible.builtin.shell: >
                                        pcs resource clone SAPHanaTopology_{{ db_sid | upper }}_{{ db_instance_number }} \
-                                         meta clone-node-max=1 interleave=true
+                                         meta clone-max=2 clone-node-max=1 interleave=true
           register:                    sap_hana_clone_topology
           failed_when:                 sap_hana_clone_topology.rc > 1
 
