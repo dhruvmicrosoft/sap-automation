@@ -80,6 +80,9 @@
       when:                            ansible_distribution_major_version is version('8', '>=')
       block:
         - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8, 9, 10"
+          when:
+                                       - is_pcmk_ver_gt_204
+                                       - ansible_distribution_major_version is version('10', '<')
           ansible.builtin.shell: >
                                        pcs resource create SAPHana_{{ db_sid | upper }}_{{ db_instance_number }} SAPHana
                                        SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }}
@@ -91,7 +94,32 @@
                                        op monitor interval=61 role="Slave" timeout={{ cluster_sap_hana_timeouts.monitor_slave }}
                                        op promote timeout={{ cluster_sap_hana_timeouts.promote }}
                                        op demote timeout={{ cluster_sap_hana_timeouts.demote }}
-                                       promotable meta notify=true clone-max=2 clone-node-max=1 interleave=true
+                                       promotable notify=true clone-max=2 clone-node-max=1 interleave=true
+          register:                    sap_hana
+          failed_when:                 sap_hana.rc > 1
+
+        # use 'Promoted', 'Started', 'Stopped', 'Unpromoted' for RHEL 10.x and above
+        # Deprecation Warning: Specifying 'meta' after 'promotable' now defines meta attributes for the base resource.
+        # In a future release, this will define meta attributes for the promotable.
+        # Specify --future to switch to the future behavior.
+        # Warning: Validating resource options using the resource agent itself is enabled by default and produces warnings.
+        # In a future version, this might be changed to errors. Specify --agent-validation to switch to the future behavior.
+        - name:                        "5.5.4.1 HANA Cluster configuration - Ensure the SAP HANA resource is created on RHEL 8, 9, 10"
+          when:
+                                       - is_pcmk_ver_gt_204
+                                       - ansible_distribution_major_version is version('10', '>=')
+          ansible.builtin.shell: >
+                                       pcs resource create SAPHana_{{ db_sid | upper }}_{{ db_instance_number }} SAPHana
+                                       SID={{ db_sid | upper }} InstanceNumber={{ db_instance_number }}
+                                       PREFER_SITE_TAKEOVER=true DUPLICATE_PRIMARY_TIMEOUT=7200
+                                       AUTOMATED_REGISTER=true
+                                       op start timeout={{ cluster_sap_hana_timeouts.start }}
+                                       op stop timeout={{ cluster_sap_hana_timeouts.stop }}
+                                       op monitor interval=59 role="Promoted" timeout={{ cluster_sap_hana_timeouts.monitor_master }}
+                                       op monitor interval=61 role="Unpromoted" timeout={{ cluster_sap_hana_timeouts.monitor_slave }}
+                                       op promote timeout={{ cluster_sap_hana_timeouts.promote }}
+                                       op demote timeout={{ cluster_sap_hana_timeouts.demote }}
+                                       promotable notify=true clone-max=2 clone-node-max=1 interleave=true
           register:                    sap_hana
           failed_when:                 sap_hana.rc > 1
 
