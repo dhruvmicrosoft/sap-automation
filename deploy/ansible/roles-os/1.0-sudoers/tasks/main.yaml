@@ -7,38 +7,26 @@
 #
 # -----------------------------------------------------------------------------
 
-- name: Check if /etc/sudoers.d exists for SLES 16
+
+- name: Check if /etc/sudoers.d exists
   become: true
   ansible.builtin.stat:
     path: /etc/sudoers.d
   register: sudoersd_dir
 
-- name: Pick existing sudoers config location
-  ansible.builtin.set_fact:
-    sudoers_logging_file: >-
-      {{
-        '/etc/sudoers' if sudoers_file.stat.exists else
-        ('/etc/sudoers.d/99-sudo-logging' if sudoersd_dir.stat.exists and sudoersd_dir.stat.isdir else
-         '/etc/sudoers')
-      }}
-
 - name: 1.0 - Enable logging for sudo operations
   become: true
   ansible.builtin.blockinfile:
-    path: >-
-      {{ '/etc/sudoers.d/99-sudo-logging'
-         if sudoersd_dir.stat.exists and sudoersd_dir.stat.isdir
-         else '/etc/sudoers' }}
+    path: "{{ '/etc/sudoers.d/99-sudo-logging' if sudoersd_dir.stat.isdir else '/etc/sudoers' }}"
     state: present
-    insertafter: EOF
     create: true
-    mode: '0440'
-    validate: visudo -cf %s
+    mode: "0440"
+    insertafter: EOF
+    validate: "visudo -cf %s"
     block: |
       Defaults logfile="/var/log/sudo.log"
-      Defaults iolog_dir="/var/log/sudo/${user}"
-      Defaults log_input
-#     Defaults log_input, log_output
+      Defaults iolog_dir="/var/log/sudo/%{user}"
+      Defaults log_input,log_output
 
 # /*----------------------------------------------------------------------------8
 # |                                    END                                      |
