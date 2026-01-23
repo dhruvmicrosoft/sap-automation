@@ -14,11 +14,29 @@
 # -------------------------------------+---------------------------------------8
 
 # SUSE bug 1167134
-- name:                                "1.2 HostName: - Ensure DHCLIENT_SET_HOSTNAME is set to no for SLES"
-  ansible.builtin.lineinfile:
-    path:                              /etc/sysconfig/network/dhcp
-    regexp:                            '^DHCLIENT_SET_HOSTNAME='
-    line:                              DHCLIENT_SET_HOSTNAME="no"
-  when:                                ansible_os_family | upper == "SUSE"
+- name: "1.2 HostName: - Check if legacy sysconfig DHCP file exists (SUSE)"
+  become: true
+  ansible.builtin.stat:
+    path: /etc/sysconfig/network/dhcp
+  register: suse_sysconfig_dhcp
 
+- name: "1.2 HostName: - Ensure DHCLIENT_SET_HOSTNAME is set to no for SLES (legacy sysconfig)"
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/sysconfig/network/dhcp
+    regexp: '^DHCLIENT_SET_HOSTNAME='
+    line: 'DHCLIENT_SET_HOSTNAME="no"'
+  when:
+    - ansible_os_family | upper == "SUSE"
+    - suse_sysconfig_dhcp.stat.exists
+
+- name: "1.2 HostName: - Skip DHCLIENT_SET_HOSTNAME because sysconfig DHCP file is not present (likely SLES16/NetworkManager)"
+  ansible.builtin.debug:
+    msg: >-
+      /etc/sysconfig/network/dhcp not found; skipping DHCLIENT_SET_HOSTNAME update.
+      Note: NetworkManager does not use sysconfig DHCP settings.
+  when:
+    - ansible_os_family | upper == "SUSE"
+    - not suse_sysconfig_dhcp.stat.exists
+    
 ...
