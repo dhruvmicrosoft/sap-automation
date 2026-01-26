@@ -553,7 +553,7 @@ packages:
     - { tier: 'os',     package: 'dbus-1-python',                                node_tier: 'iscsi',          state: 'present' }
     # --------------------------- End - Packages required for iSCSI -----------------------------------------8
     # ------------------------ End - packages required for Clustering ---------------------------------------8
-      sles_sap16:
+  sles_sap16:
     - { tier: 'os',     package: 'chrony',                                       node_tier: 'all',            state: 'present' }
     # - { tier: 'os',     package: 'libyui-qt-pkg11',                              node_tier: 'all',           state: 'present' }
     - { tier: 'os',     package: 'glibc',                                        node_tier: 'all',            state: 'present' }
@@ -699,7 +699,7 @@ packages:
     - { tier: 'ha',     package: 'fence-agents-azure-arm',                       node_tier: 'scs',            state: 'present' }
     - { tier: 'ha',     package: 'fence-agents-azure-arm',                       node_tier: 'ers',            state: 'present' }
     - { tier: 'ha',     package: 'fence-agents-azure-arm',                       node_tier: 'hana',           state: 'present' }
-    sles_sap16.0:
+  sles_sap16.0:
     - { tier: 'os',     package: 'python3-xml',                                  node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'python3-rpm',                                  node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'azure-vm-utils',                               node_tier: 'all',            state: 'present' }
