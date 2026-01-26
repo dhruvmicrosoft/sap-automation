@@ -76,24 +76,28 @@
 # Update printmotd if commented. We do not change it is explicitly set to no
 # Update sshd
 # -------------------------------------+---------------------------------------8
-- name:                                "1.13 MOTD - Update PrintMotd when commented"
-  ansible.builtin.lineinfile:
-    state:                             present
-    dest:                              /etc/ssh/sshd_config
-    regexp:                            '#PrintMotd'
-    line:                              'PrintMotd yes'
-  become:                              true
-  notify:
-    - "1.13 MOTD - Restart sshd service"
 
-- name:                                "1.13 MOTD - Update default Banner path"
-  ansible.builtin.lineinfile:
-    state:                             present
-    dest:                              /etc/ssh/sshd_config
-    regexp:                            '#Banner'
-    line:                              'Banner /etc/issue.net'
-  become:                              true
-  notify:
-    - "1.13 MOTD - Restart sshd service"
+- name: "1.13 MOTD - Ensure sshd_config.d exists"
+  become: true
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
+- name: "1.13 MOTD - Configure SSH banner via drop-in"
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/sshd_config.d/99-sdaf-motd.conf
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    marker: "# {mark} SDAF MOTD CONFIG"
+    block: |
+      PrintMotd yes
+      Banner /etc/issue.net
+  notify: "1.13 MOTD - Restart sshd service"
+  
 ...
