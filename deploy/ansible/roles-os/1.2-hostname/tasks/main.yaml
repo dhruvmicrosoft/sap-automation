@@ -38,5 +38,5 @@
   when:
     - ansible_os_family | upper == "SUSE"
     - not suse_sysconfig_dhcp.stat.exists
-    
+
 ...
