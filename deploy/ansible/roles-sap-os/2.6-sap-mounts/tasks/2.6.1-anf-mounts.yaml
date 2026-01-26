@@ -59,6 +59,16 @@
 # For additional information refer to the below URLs
 # https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-hana-high-availability-netapp-files-suse#mount-the-azure-netapp-files-volume
 # https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-hana-high-availability-netapp-files-red-hat#mount-the-azure-netapp-files-volume
+
+- name: "2.6.1 ANF Mount - Ensure /etc/idmapd.conf exists (SLES 16 safe)"
+  become: true
+  ansible.builtin.file:
+    path: /etc/idmapd.conf
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+
 - name:                                "2.6.1 ANF Mount - NFS Domain Setting (ANF)"
   block:
     - name:                            "2.6.1 ANF Mount - Domain is configured as
