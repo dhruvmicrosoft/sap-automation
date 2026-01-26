@@ -139,6 +139,23 @@
         reload:                        true
         ignoreerrors:                  true
 
+    - name:                           "Ensure pam_limits is installed (SLES)"
+      become:                          true
+      ansible.builtin.package:
+        name:                          "pam_limits"
+        state:                         "present"
+      when:
+        - ansible_os_family == "Suse"
+
+    - name:                           "Ensure /etc/security/limits.conf exists"
+      become:                          true
+      ansible.builtin.file:
+        path:                          /etc/security/limits.conf
+        state:                         touch
+        owner:                         root
+        group:                         root
+        mode:                          "0644"
+
     - name:                            "1.9 Kernel parameters - Set limits"
       ansible.builtin.blockinfile:
         path:                          /etc/security/limits.conf
