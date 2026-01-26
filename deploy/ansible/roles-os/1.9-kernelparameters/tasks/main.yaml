@@ -138,87 +138,101 @@
         sysctl_set:                    true
         reload:                        true
         ignoreerrors:                  true
-
-    - name:                           "Ensure pam_limits is installed (SLES)"
-      become:                          true
-      ansible.builtin.package:
-        name:                          "pam_limits"
-        state:                         "present"
-      when:
-        - ansible_os_family == "Suse"
-
-    - name:                           "Ensure /etc/security/limits.conf exists"
-      become:                          true
-      ansible.builtin.file:
-        path:                          /etc/security/limits.conf
-        state:                         touch
-        owner:                         root
-        group:                         root
-        mode:                          "0644"
-
-    - name:                            "1.9 Kernel parameters - Set limits"
-      ansible.builtin.blockinfile:
-        path:                          /etc/security/limits.conf
-        insertafter:                   '#@student        -       maxlogins       4'
-        state:                         present
-        block: |
-                oracle     soft memlock unlimited
-                oracle     hard memlock unlimited
-                @sapsys    hard    nproc    unlimited
-                @sapsys    soft    nproc    unlimited
-                @dba       hard    nproc    unlimited
-                @dba       soft    nproc    unlimited
   when:
     - node_tier in ["oracle","oracle-asm","oracle-multi-sid"]
 
-- name:                                "1.9 Kernel parameters - Set limits for DB2"
+# --------------------------------------------------------------------
+# Limits handling (SLES16-safe): write to /etc/security/limits.d/*.conf
+# pam_limits reads /etc/security/limits.conf AND /etc/security/limits.d/*.conf
+# --------------------------------------------------------------------
+
+- name: "1.9 Kernel parameters - Ensure limits.d exists"
+  become: true
+  ansible.builtin.file:
+    path: /etc/security/limits.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "1.9 Kernel parameters - Ensure SDAF limits drop-in exists"
+  become: true
+  ansible.builtin.file:
+    path: /etc/security/limits.d/99-sdaf-sap.conf
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+
+# Oracle limits (only for Oracle tiers)
+- name: "1.9 Kernel parameters - Set limits for Oracle tiers (drop-in)"
+  become: true
   ansible.builtin.blockinfile:
-    path:                              /etc/security/limits.conf
-    insertafter:                       '#@student        -       maxlogins       4'
-    state:                              present
+    path: /etc/security/limits.d/99-sdaf-sap.conf
+    create: true
+    marker: "# {mark} SDAF ORACLE LIMITS"
+    state: present
     block: |
-                @sapsys    hard    nproc    unlimited
-                @sapsys    soft    nproc    unlimited
-                @db{{ db_sid | lower }}adm      hard    nproc    unlimited
-                @db{{ db_sid | lower }}adm      soft    nproc    unlimited
+      oracle     soft memlock unlimited
+      oracle     hard memlock unlimited
+      @sapsys    hard    nproc    unlimited
+      @sapsys    soft    nproc    unlimited
+      @dba       hard    nproc    unlimited
+      @dba       soft    nproc    unlimited
+  when:
+    - node_tier in ["oracle", "oracle-asm", "oracle-multi-sid"]
+
+# DB2 limits
+- name: "1.9 Kernel parameters - Set limits for DB2 (drop-in)"
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/security/limits.d/99-sdaf-sap.conf
+    create: true
+    marker: "# {mark} SDAF DB2 LIMITS"
+    state: present
+    block: |
+      @sapsys                 hard    nproc    unlimited
+      @sapsys                 soft    nproc    unlimited
+      @db{{ db_sid | lower }}adm      hard    nproc    unlimited
+      @db{{ db_sid | lower }}adm      soft    nproc    unlimited
   when:
     - node_tier == 'db2'
 
-- name:                                "1.9 Kernel parameters - Set limits for HANA"
+# HANA limits
+- name: "1.9 Kernel parameters - Set limits for HANA (drop-in)"
+  become: true
   ansible.builtin.blockinfile:
-    path:                              /etc/security/limits.conf
-    insertafter:                       '#@student        -       maxlogins       4'
-    state:                              present
+    path: /etc/security/limits.d/99-sdaf-sap.conf
+    create: true
+    marker: "# {mark} SDAF HANA LIMITS"
+    state: present
     block: |
-                @sapsys    hard    nproc    unlimited
-                @sapsys    soft    nproc    unlimited
-                @dba       hard    nproc    unlimited
-                @dba       soft    nproc    unlimited
+      @sapsys    hard    nproc    unlimited
+      @sapsys    soft    nproc    unlimited
+      @dba       hard    nproc    unlimited
+      @dba       soft    nproc    unlimited
   when:
     - node_tier == 'hana'
 
-- name:                                "1.9 Kernel parameters - Set limits for app tier"
+# App tier limits
+- name: "1.9 Kernel parameters - Set limits for app tier (drop-in)"
+  become: true
   ansible.builtin.blockinfile:
-    path:                              /etc/security/limits.conf
-    insertafter:                       '#@student        -       maxlogins       4'
-    state:                              present
+    path: /etc/security/limits.d/99-sdaf-sap.conf
+    create: true
+    marker: "# {mark} SDAF APP LIMITS"
+    state: present
     block: |
-                @sapsys    hard    nproc    unlimited
-                @sapsys    soft    nproc    unlimited
-                @sapsys    hard    nofile   65536
-                @sapsys    soft    nofile   65536
+      @sapsys    hard    nproc    unlimited
+      @sapsys    soft    nproc    unlimited
+      @sapsys    hard    nofile   65536
+      @sapsys    soft    nofile   65536
   when:
-    - node_tier in ['scs','ers','app','pas']
-
-# ----------------------------------------
-# END
-# ----------------------------------------
-
+    - node_tier in ['scs', 'ers', 'app', 'pas']
 
 # /*----------------------------------------------------------------------------8
 # |                       Custom kernel parameters                              |
 # +------------------------------------4---------------------------------------*/
-
 
 - name:                                "1.9 Kernel parameters - Gather list of custom defined parameters which need to be applied"
   ansible.builtin.set_fact:
