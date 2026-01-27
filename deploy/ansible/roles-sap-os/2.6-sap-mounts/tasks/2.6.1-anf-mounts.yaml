@@ -124,8 +124,9 @@
     - name:                            "2.6.1 ANF Mount - Ensure the NFS ID Map service is restarted"
       ansible.builtin.systemd:
         name:                          "nfs-idmapd"
-        daemon-reload:                 true
-        state:                         restarted
+        state:                         stopped
+        enabled:                       false 
+      failed_when:                     false
     - name:                            "2.6.1 ANF Mount - Pause for 5 seconds"
       ansible.builtin.pause:
         seconds:                       5
