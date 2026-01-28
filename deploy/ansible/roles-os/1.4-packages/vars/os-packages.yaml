@@ -562,6 +562,7 @@ packages:
     - { tier: 'os',     package: 'numad',                                        node_tier: 'all',            state: 'present' }
     - { tier: 'os',     package: 'ntp',                                          node_tier: 'all',            state: 'absent'  }
     - { tier: 'os',     package: 'unrar',                                        node_tier: 'scs',            state: 'present' }
+    - { tier: 'os',     package: 'unzip',                                        node_tier: 'scs',            state: 'present' }
     # --------------------------- Begin - Packages required for DB2 -----------------------------------------8
     # https://www.ibm.com/docs/en/db2/11.5?topic=servers-linux
     - { tier: 'os',     package: 'libaio',                                       node_tier: 'db2',            state: 'present' }
