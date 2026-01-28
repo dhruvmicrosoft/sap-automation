@@ -578,7 +578,6 @@ packages:
     - { tier: 'os',     package: 'regionServiceCertsAzure',                      node_tier: 'all',            state: 'present' }
     - { tier: 'sapos',  package: 'autofs',                                       node_tier: 'all',            state: 'present' }
     - { tier: 'sapos',  package: 'nfs-utils',                                    node_tier: 'all',            state: 'present' }
-    - { tier: 'sapos',  package: 'nfs4-acl-tools',                               node_tier: 'all',            state: 'present' }
     - { tier: 'sapos',  package: 'saptune',                                      node_tier: 'all',            state: 'present' }
     - { tier: 'sapos',  package: 'libgcc_s1',                                    node_tier: 'all',            state: 'present' }
     - { tier: 'sapos',  package: 'libstdc++6',                                   node_tier: 'all',            state: 'present' }
