@@ -1,0 +1,64 @@
+---
+# Add step marker to SCR state for restart capability
+# This enables the workflow to track progress and resume from checkpoints
+
+- name: Validate step marker parameters
+  assert:
+    that:
+      - scr_step_name is defined
+      - scr_step_status is defined
+      - scr_step_status in ['started', 'completed', 'failed', 'skipped']
+    fail_msg: "Missing or invalid step marker parameters"
+
+- name: Load current SCR state from local file
+  slurp:
+    src: "/tmp/{{ scr_state_blob_name }}"
+  register: current_state_content
+  ignore_errors: true
+
+- name: Parse current SCR state
+  set_fact:
+    current_scr_state: "{{ current_state_content.content | b64decode | from_json }}"
+  when: current_state_content is succeeded
+
+- name: Create new step marker entry
+  set_fact:
+    new_step_marker:
+      step: "{{ scr_step_name }}"
+      status: "{{ scr_step_status }}"
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+      details: "{{ scr_step_details | default({}) }}"
+
+- name: Append step marker to existing markers
+  set_fact:
+    updated_step_markers: "{{ current_scr_state.telemetry.step_markers | default([]) + [new_step_marker] }}"
+
+- name: Update restart marker if step completed
+  set_fact:
+    updated_restart_marker:
+      last_completed_step: "{{ scr_step_name }}"
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+  when: scr_step_status == 'completed'
+
+- name: Update SCR state with new telemetry
+  set_fact:
+    updated_telemetry:
+      step_markers: "{{ updated_step_markers }}"
+      restart_marker: "{{ updated_restart_marker | default(current_scr_state.telemetry.restart_marker) }}"
+
+- name: Combine telemetry with current state
+  set_fact:
+    updated_scr_state: "{{ current_scr_state | combine({'telemetry': updated_telemetry}, recursive=true) }}"
+
+- name: Write updated SCR state to local file
+  copy:
+    content: "{{ updated_scr_state | to_nice_json(indent=2) }}"
+    dest: "/tmp/{{ scr_state_blob_name }}"
+
+- name: Display step marker added
+  debug:
+    msg:
+      - "Step marker added: {{ scr_step_name }}"
+      - "Status: {{ scr_step_status }}"
+      - "Total markers: {{ updated_step_markers | length }}"
+      - "Last completed: {{ updated_restart_marker.last_completed_step | default('None') }}"

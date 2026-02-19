@@ -1,0 +1,110 @@
+---
+# Simplified SCR Initialize and Discovery Playbook
+# This playbook discovers system facts and publishes complete state in one operation
+
+- name: SCR Discovery and State Management
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  
+  vars:
+    default_discovery_mode: "source"
+    
+  tasks:
+    - name: Set workflow variables
+      set_fact:
+        actual_discovery_mode: "{{ discovery_mode | default(default_discovery_mode) }}"
+        actual_source_sid: "{{ scr_source_sid | default('') }}"
+        actual_target_sid: "{{ scr_target_sid | default('') }}"
+        scr_run_id: "{{ scr_run_id | default(ansible_date_time.iso8601) }}"
+    
+    # Build blob infrastructure variables upfront
+    - name: Initialize blob storage variables
+      set_fact:
+        scr_datastore_prefix: "scr"
+        scr_state_blob_name: "scr_state.json"
+        scr_blob_prefix: "scr/{{ scr_run_id }}/"
+        scr_blob_content_type: "application/json"
+
+    - name: Display workflow configuration
+      debug:
+        msg:
+          - "=== SCR DISCOVERY WORKFLOW ==="
+          - "Run ID: {{ scr_run_id }}"
+          - "Discovery Mode: {{ actual_discovery_mode }}"
+          - "Source SID: {{ actual_source_sid if actual_source_sid != '' else 'Auto-discover' }}"
+          - "Target SID: {{ actual_target_sid if actual_target_sid != '' else 'Auto-discover' }}"
+
+    # STEP 1: Discover source system
+    - name: Discover source system facts
+      include_role:
+        name: roles-scr/scr_system_discovery
+      vars:
+        scr_discovery_system_role: "source"
+        scr_discovery_sid: "{{ actual_source_sid }}"
+      when: actual_discovery_mode in ['source', 'both']
+      tags: scr_source_discovery
+
+    - name: Store source discovery facts
+      set_fact:
+        source_discovery_facts: "{{ discovered_facts }}"
+      when: actual_discovery_mode in ['source', 'both'] and discovered_facts is defined
+
+    # STEP 2: Discover target system
+    - name: Discover target system facts
+      include_role:
+        name: roles-scr/scr_system_discovery
+      vars:
+        scr_discovery_system_role: "target"
+        scr_discovery_sid: "{{ actual_target_sid }}"
+      when: actual_discovery_mode in ['target', 'both']
+      tags: scr_target_discovery
+
+    - name: Store target discovery facts
+      set_fact:
+        target_discovery_facts: "{{ discovered_facts }}"
+      when: actual_discovery_mode in ['target', 'both'] and discovered_facts is defined
+
+    # STEP 3: Build complete SCR state JSON directly
+    - name: Build complete SCR state JSON
+      include_role:
+        name: roles-scr/scr_common
+        tasks_from: build_scr_state.yaml
+      vars:
+        source_facts: "{{ source_discovery_facts | default({}) }}"
+        target_facts: "{{ target_discovery_facts | default({}) }}"
+      tags: scr_build
+
+    # STEP 4: Add step markers dynamically
+    - name: Mark initiate_logging as completed
+      include_role:
+        name: roles-scr/scr_common
+        tasks_from: add_step_marker.yaml
+      vars:
+        scr_step_name: "initiate_logging"
+        scr_step_status: "completed"
+      tags: scr_telemetry
+
+    - name: Mark collect_facts as completed
+      include_role:
+        name: roles-scr/scr_common
+        tasks_from: add_step_marker.yaml
+      vars:
+        scr_step_name: "collect_facts"
+        scr_step_status: "completed"
+      tags: scr_telemetry
+
+    # STEP 5: Publish to Azure (single operation)
+    - name: Publish SCR state to Azure
+      include_role:
+        name: roles-scr/scr_common
+        tasks_from: publish_scr_state.yaml
+      tags: scr_publish
+
+    - name: Display completion summary
+      debug:
+        msg:
+          - "=== SCR WORKFLOW COMPLETE ==="
+          - "Run ID: {{ scr_run_id }}"
+          - "Blob Path: {{ scr_blob_prefix }}{{ scr_state_blob_name }}"
+          - "Published to Azure Storage successfully"

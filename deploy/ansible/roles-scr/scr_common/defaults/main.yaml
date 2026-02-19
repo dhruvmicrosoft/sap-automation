@@ -1,0 +1,41 @@
+---
+# defaults that don't need to be configured by user
+scr_log_dir: "{{ ansible_env.HOME | default('/tmp') }}/scr/logs"
+scr_datastore_root: "{{ ansible_env.HOME | default('/tmp') }}/scr/datastore" 
+scr_run_id: "{{ ansible_date_time.iso8601 }}"       # Unique identifier for this SCR run
+
+# Datastore defaults
+scr_datastore_prefix: "scr"
+scr_state_blob_name: "scr_state.json"
+scr_logs_folder_name: "logs"
+scr_exports_folder_name: "exports"
+scr_blob_content_type: "application/json"
+
+# Azure (user-configurable; override via inventory or GUI)
+scr_azure_subscription_id: "d6c8e3b6-467e-452e-97c9-49d9de9e37da"       # optional (used if you need it)
+scr_azure_resource_group: "WZDA1-EUS2-SAP01-J22"        # e.g., "rg-sap-scr"
+scr_azure_storage_account: "scrblob"       # e.g., "sapscrops"
+scr_azure_container: "scr-runs"     # container where runs are stored
+
+# -- MSI (no secrets required) --
+scr_azure_use_managed_identity: true
+
+# SPN credentials (required when scr_auth_mode is "spn")
+scr_azure_spn_client_id: "74135280-9c5c-4d36-8cc8-3ccf12a402b3"
+scr_azure_spn_client_secret: ""
+scr_azure_spn_tenant_id: "c01abe72-ffef-4ecc-bda0-937975b49e6b"
+
+# defaults that should be configured by user
+scr_auth_mode: "spn"    #authentication mode: msi|spn"
+scr_source_sid: "J22"    #passed from GUI or CLI
+scr_target_sid: ""    #passed from GUI or CLI
+scr_db_type: "hana"  #database type: oracle, hana, ASE etc
+scr_refresh_protocol: "service"              #service|local|snapshot|export_import (how to copy db)
+scr_retained_tables:                         #list of tables to retain during refresh
+  - { name: "USR02", key: "MANDT" }
+scr_parity:                                  # Which components to check parity for
+  os: true
+  sap_kernel: true
+  db_kernel: true
+
+...
