@@ -10,49 +10,72 @@
       - scr_step_status in ['started', 'completed', 'failed', 'skipped']
     fail_msg: "Missing or invalid step marker parameters"
 
-- name: Load current SCR state from local file
+- name: Check if SCR state file exists
+  stat:
+    path: "/tmp/{{ scr_state_blob_name }}"
+  register: state_file_check
+
+- name: Read current SCR state file
   slurp:
     src: "/tmp/{{ scr_state_blob_name }}"
   register: current_state_content
-  ignore_errors: true
+  when: state_file_check.stat.exists
 
-- name: Parse current SCR state
+- name: Get current state text
   set_fact:
-    current_scr_state: "{{ current_state_content.content | b64decode | from_json }}"
-  when: current_state_content is succeeded
+    current_state_text: "{{ current_state_content.content | b64decode if state_file_check.stat.exists else '' }}"
 
-- name: Create new step marker entry
+- name: Build step marker text entry
   set_fact:
-    new_step_marker:
-      step: "{{ scr_step_name }}"
-      status: "{{ scr_step_status }}"
-      timestamp: "{{ ansible_date_time.iso8601 }}"
-      details: "{{ scr_step_details | default({}) }}"
+    step_marker_text: |
+      [{{ ansible_date_time.iso8601 }}] {{ scr_step_name }}: {{ scr_step_status | upper }}
+      {%- if scr_step_details is defined and scr_step_details %}
+      {%- for key, value in scr_step_details.items() %}
+        {{ key }}: {{ value }}
+      {%- endfor %}
+      {%- endif %}
 
-- name: Append step marker to existing markers
+- name: Check if telemetry section exists
   set_fact:
-    updated_step_markers: "{{ current_scr_state.telemetry.step_markers | default([]) + [new_step_marker] }}"
+    has_telemetry_section: "{{ 'WORKFLOW PROGRESS AND TELEMETRY' in current_state_text }}"
+
+- name: Append step marker to existing telemetry section
+  set_fact:
+    updated_state_text: "{{ current_state_text }}{{ step_marker_text }}"
+  when: has_telemetry_section
+
+- name: Create new telemetry section if needed
+  set_fact:
+    updated_state_text: |
+      {{ current_state_text }}
+      --------------------------------------------------------------------------------
+      WORKFLOW PROGRESS AND TELEMETRY
+      --------------------------------------------------------------------------------
+      {{ step_marker_text }}
+  when: not has_telemetry_section
 
 - name: Update restart marker if step completed
   set_fact:
-    updated_restart_marker:
-      last_completed_step: "{{ scr_step_name }}"
-      timestamp: "{{ ansible_date_time.iso8601 }}"
+    restart_marker_text: |
+      
+      RESTART CHECKPOINT:
+      Last Completed Step: {{ scr_step_name }}
+      Timestamp: {{ ansible_date_time.iso8601 }}
   when: scr_step_status == 'completed'
 
-- name: Update SCR state with new telemetry
+- name: Append restart marker if completed
   set_fact:
-    updated_telemetry:
-      step_markers: "{{ updated_step_markers }}"
-      restart_marker: "{{ updated_restart_marker | default(current_scr_state.telemetry.restart_marker) }}"
+    final_state_text: "{{ updated_state_text }}{{ restart_marker_text }}"
+  when: scr_step_status == 'completed'
 
-- name: Combine telemetry with current state
+- name: Use state without restart marker for other statuses
   set_fact:
-    updated_scr_state: "{{ current_scr_state | combine({'telemetry': updated_telemetry}, recursive=true) }}"
+    final_state_text: "{{ updated_state_text }}"
+  when: scr_step_status != 'completed'
 
 - name: Write updated SCR state to local file
   copy:
-    content: "{{ updated_scr_state | to_nice_json(indent=2) }}"
+    content: "{{ final_state_text }}"
     dest: "/tmp/{{ scr_state_blob_name }}"
 
 - name: Display step marker added
@@ -60,5 +83,4 @@
     msg:
       - "Step marker added: {{ scr_step_name }}"
       - "Status: {{ scr_step_status }}"
-      - "Total markers: {{ updated_step_markers | length }}"
-      - "Last completed: {{ updated_restart_marker.last_completed_step | default('None') }}"
+      - "Timestamp: {{ ansible_date_time.iso8601 }}"

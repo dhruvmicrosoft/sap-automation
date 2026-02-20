@@ -19,7 +19,7 @@
   assert:
     that:
       - local_state_file.stat.exists
-    fail_msg: "Local SCR state file not found. Ensure JSON is prepared before publishing."
+    fail_msg: "Local SCR state file not found. Ensure state file is prepared before publishing."
 
 # Upload SCR state to Azure
 - block:

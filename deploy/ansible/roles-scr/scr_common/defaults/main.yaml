@@ -6,10 +6,10 @@ scr_run_id: "{{ ansible_date_time.iso8601 }}"       # Unique identifier for this
 
 # Datastore defaults
 scr_datastore_prefix: "scr"
-scr_state_blob_name: "scr_state.json"
+scr_state_blob_name: "scr_state.txt"
 scr_logs_folder_name: "logs"
 scr_exports_folder_name: "exports"
-scr_blob_content_type: "application/json"
+scr_blob_content_type: "text/plain"
 
 # Azure (user-configurable; override via inventory or GUI)
 scr_azure_subscription_id: "d6c8e3b6-467e-452e-97c9-49d9de9e37da"       # optional (used if you need it)
