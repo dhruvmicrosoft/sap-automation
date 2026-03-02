@@ -167,7 +167,13 @@ fi
 # Run Pre tasks if Ansible playbook with the correct naming exists                         #
 #                                                                                          #
 ############################################################################################
-filename=./config/Ansible/"${filename_without_prefix}"_pre.yml
+
+if [ "$PLATFORM" == "devops" ]; then
+	cd "$BUILD_REPOSITORY_LOCALPATH" || exit
+fi
+
+
+filename=./Ansible/"${filename_without_prefix}"_pre.yml
 
 echo "Check if file: ${filename} exists"
 
@@ -222,7 +228,7 @@ echo "##[endgroup]"
 #                                                                                          #
 ############################################################################################
 
-filename=./config/Ansible/"${filename_without_prefix}"_post.yml
+filename=./Ansible/"${filename_without_prefix}"_post.yml
 echo "Check if file: ${filename} exists"
 
 if [ -f "${filename}" ]; then
