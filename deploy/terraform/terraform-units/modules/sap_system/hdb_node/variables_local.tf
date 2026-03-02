@@ -535,5 +535,6 @@ locals {
                                           azurerm_network_interface.nics_dbnodes_db[*].ip_configuration[0].name
                                         )
 
+  versions                            = split(".", coalesce(var.landscape_tfstate.version_label, "0.0.0"))
 
 }
