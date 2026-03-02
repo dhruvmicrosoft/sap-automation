@@ -203,7 +203,7 @@ filename=./Ansible/"${filename_without_prefix}"_pre.yml
 echo "Check if file: ${filename} exists"
 
 if [ -f "${filename}" ]; then
-	echo "##[group]- preconfiguration"
+	echo "##[group]- Pre configuration"
 
 	redacted_command="ansible-playbook -i '$INVENTORY' --private-key $curdir/$SSH_KEY_NAME -e 'kv_name=$VAULT_NAME' -e 'download_directory=$AGENT_TEMPDIRECTORY' -e '_workspace_directory=$curdir' $EXTRA_PARAMS -e orchestration_ansible_user=${USER:-$user_name} -e ansible_user=$user_name -e ansible_python_interpreter=/usr/bin/python3 -e @$curdir $EXTRA_PARAM_FILE	${filename}"
 
@@ -222,7 +222,7 @@ if [ -f "${filename}" ]; then
 
 	eval "${command}"
 	return_code=$?
-	echo "##[section]Ansible playbook ${filename} execution completed with exit code [$return_code]"
+	echo "##[section]Ansible pre-configuration playbook ${filename} execution completed with exit code [$return_code]"
 	echo "##[endgroup]"
 
 fi
@@ -275,7 +275,7 @@ if [ -f "${filename}" ]; then
 
 	eval "${command}"
 	return_code=$?
-	echo "##[section]Ansible playbook ${filename} execution completed with exit code [$return_code]"
+	echo "##[section]Ansible post-configuration playbook ${filename} execution completed with exit code [$return_code]"
 	echo "##[endgroup]"
 
 fi
