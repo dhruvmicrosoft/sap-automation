@@ -7,37 +7,26 @@ resource "azurerm_storage_account" "hanashared" {
   count                                = var.NFS_provider == "AFS" && var.database.scale_out ? (
                                            try(length(var.hanashared_id) > 0, false) ? (
                                              0) : (
-                                             var.use_single_hana_shared ? 1 : max(2,length(var.database.zones))
+                                             var.use_single_hana_shared ? 1 : length(var.database.zones)
                                            )) : (
                                            0
                                          )
   name                                 = substr(replace(
                                            lower(
-
-                                             local.hana_shared_count == 1 ? (
-                                               format("%s%s%s",
-                                                 local.prefix,
-                                                 local.resource_suffixes.hanashared,
-                                                 try(
-                                                   local.resource_suffixes.hanashared_id,
-                                                   substr(var.random_id,0,3)
-                                                 )
-                                               )
-                                             ) : (
-                                               format("%s%s%s%02d",
-                                                 local.prefix,
-                                                 "hs",
-                                                 substr(var.random_id,0,3),
-                                                 count.index + 1
-
-                                               )
+                                             format("%s%s%s%01d",
+                                               local.prefix,
+                                               local.resource_suffixes.hanasharedafs,
+                                               try(
+                                                 local.resource_suffixes.hanasharedafs_id,
+                                                 substr(var.random_id,0,3)
+                                               ),
+                                               count.index + 1  # Bumping with 1 to not have overlap with the sapmnnt storage account
                                              )
-
-
                                            ),
                                            "/[^a-z0-9]/",
                                            ""
                                          ), 0, 24)
+
 
   resource_group_name                  = var.resource_group[0].name
   location                             = var.resource_group[0].location
@@ -96,7 +85,7 @@ resource "azurerm_storage_share" "hanashared" {
   storage_account_id                   = var.NFS_provider == "AFS" ? (
                                            length(try(var.hanashared_id, "")) > 0 ? (
                                              var.hanashared_id[var.use_single_hana_shared ? 0 : count.index]) : (
-                                             azurerm_storage_account.hanashared[var.use_single_hana_shared ? 0 : count.index].id
+                                             azurerm_storage_account.hanashared[var.use_single_hana_shared ? 0 : 0].id
                                            )
                                            ) : (
                                            ""
@@ -111,7 +100,7 @@ resource "azurerm_private_endpoint" "hanashared" {
   count                                = var.NFS_provider == "AFS" && var.use_private_endpoint && var.database.scale_out ? (
                                           length(try(var.hanashared_private_endpoint_id, "")) > 0 ? (
                                             0) : (
-                                            var.use_single_hana_shared ? 1 : max(2,length(var.database.zones))
+                                            var.use_single_hana_shared ? 1 : length(var.database.zones)
                                           )) : (
                                           0
                                         )
@@ -191,8 +180,4 @@ data "azurerm_private_endpoint_connection" "hanashared" {
   name                                 = split("/", var.hanashared_private_endpoint_id[count.index])[8]
   resource_group_name                  = split("/", var.hanashared_private_endpoint_id[count.index])[4]
 
-}
-
-locals{
-  hana_shared_count = var.use_single_hana_shared ? 1 : (local.version[0] >= 3 && local.version[1] >= 19 ? max(2,length(var.database.zones)) : length(var.database.zones))
 }
