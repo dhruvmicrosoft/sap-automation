@@ -194,5 +194,5 @@ data "azurerm_private_endpoint_connection" "hanashared" {
 }
 
 locals{
-  hana_shared_count = var.use_single_hana_shared ? 1 : (local.versions[0] >= 3 && local.versions[1] >= 19 ? max(2,length(var.database.zones)) : length(var.database.zones))
+  hana_shared_count = var.use_single_hana_shared ? 1 : (local.version[0] >= 3 && local.version[1] >= 19 ? max(2,length(var.database.zones)) : length(var.database.zones))
 }
