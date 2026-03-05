@@ -93,7 +93,7 @@
   block:
     - name:                            "1.18.2.0 Generic Pacemaker - Ensure Secondary nodes joins the Cluster"
       # ha-cluster-join is not supported in SUSE 15 SP4 anymore, crm syntax required
-      ansible.builtin.shell:           "crm cluster join -y -c {{ primary_instance_name }} --interface eth0"
+      ansible.builtin.shell:           "crm cluster join -y -c {{ ansible_user | default(ansible_ssh_user, true) | default('azureadm', true) }}@{{ primary_instance_name }} --interface eth0"
 
 
 - name:                                "1.18.2.0 Generic Pacemaker - Ensure HA Cluster password is set to something secure"
