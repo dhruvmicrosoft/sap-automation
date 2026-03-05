@@ -27,14 +27,14 @@
   tags:
                                        - "iscsi-targetcli"
 
-- name:                                "2.11 iSCSI Server - Ensure that the firewall rules are set on RHEL"
-  when:
-                                       - ansible_os_family | upper == "REDHAT"
-  ansible.posix.firewalld:
-    port:                              "3260/tcp"
-    permanent:                         true
-    immediate:                         true
-    state:                             enabled
+- name:                                "2.11 iSCSI Server - Stop and disable firewalld on iSCSI server"
+  become_user:                         root
+  become:                              true
+  ansible.builtin.systemd:
+    name:                              firewalld
+    state:                             stopped
+    enabled:                           false
+  failed_when:                         false
   tags:
                                        - "iscsi-firewall"
 
