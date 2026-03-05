@@ -213,7 +213,7 @@ win_sap_admin: "SAP_{{ sap_sid | upper }}_GlobalAdmin"
 
 # Windows patch releated parameters
 
-win_updates_reject_list: [ "KB5034439" ]
+win_updates_reject_list: ["KB5034439"]
 win_updates_accept_list: []
 
 # SQL Server specific parameters
