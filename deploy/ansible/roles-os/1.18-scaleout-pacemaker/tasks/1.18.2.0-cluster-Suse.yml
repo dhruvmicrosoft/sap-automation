@@ -84,6 +84,46 @@
       failed_when:                     crm_init_result.rc > 1
 
 
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | SSH Trust - BEGIN                                                          |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+# Ensure the primary hacluster public key is authorized on joining nodes before
+# crm cluster join is invoked. The hacluster home directory is distribution-
+# dependent; /var/lib/pacemaker is confirmed on SLES 15+ deployments. The
+# getent lookup resolves this dynamically to avoid hardcoding the path.
+
+- name:                                "1.18.2.0 Generic Pacemaker - Resolve hacluster home directory on primary"
+  ansible.builtin.getent:
+    database:                          passwd
+    key:                               hacluster
+  register:                            hacluster_passwd
+  delegate_to:                         "{{ primary_instance_name }}"
+  when:                                ansible_hostname != primary_instance_name
+
+- name:                                "1.18.2.0 Generic Pacemaker - Fetch primary hacluster public key"
+  ansible.builtin.slurp:
+    src:                               "{{ hacluster_passwd.ansible_facts.getent_passwd.hacluster[4] }}/.ssh/id_rsa.pub"
+  register:                            primary_hacluster_pubkey
+  delegate_to:                         "{{ primary_instance_name }}"
+  when:                                ansible_hostname != primary_instance_name
+
+- name:                                "1.18.2.0 Generic Pacemaker - Authorize primary hacluster key on joining node"
+  ansible.posix.authorized_key:
+    user:                              hacluster
+    state:                             present
+    key:                               "{{ primary_hacluster_pubkey.content | b64decode }}"
+  when:                                ansible_hostname != primary_instance_name
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | SSH Trust - END                                                            |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+
 - name:                                "1.18.2.0 Generic Pacemaker - Ensure additional nodes joins the Cluster"
   become:                              true
   become_user:                         root
