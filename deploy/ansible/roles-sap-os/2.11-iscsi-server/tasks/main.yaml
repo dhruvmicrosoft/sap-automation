@@ -30,6 +30,7 @@
 - name:                                "2.11 iSCSI Server - Ensure that the firewall rules are set on RHEL"
   when:
                                        - ansible_os_family | upper == "REDHAT"
+                                       - ansible_os_family | upper == "SUSE"
   ansible.posix.firewalld:
     port:                              "3260/tcp"
     permanent:                         true
