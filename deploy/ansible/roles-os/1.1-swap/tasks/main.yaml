@@ -48,6 +48,11 @@
     name:                              waagent
     state:                             restarted
 
+- name:                                "1.1 Swap - Wait for WAAgent to be active on {{ distribution_id }}"
+  ansible.builtin.wait_for:
+    delay:                             60
+    timeout:                           300
+
 # Check the current swap size
 - name:                                "1.1 Swap - Check swap size"
   ansible.builtin.shell:               set -o pipefail && cat /proc/meminfo | grep SwapTotal
