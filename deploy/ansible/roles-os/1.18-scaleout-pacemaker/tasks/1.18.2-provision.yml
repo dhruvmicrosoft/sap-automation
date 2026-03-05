@@ -148,7 +148,7 @@
     - name:                            "1.18.2 Generic Pacemaker - Ensure that network interface is not managed by cloud network plugin"
       become:                          true
       ansible.builtin.lineinfile:
-        path:                          usr/etc/sysconfig/network/ifcfg-eth0
+        path:                          etc/sysconfig/network/ifcfg-eth0
         backup:                        true
         regexp:                        '^CLOUD_NETCONFIG_MANAGE='
         line:                          CLOUD_NETCONFIG_MANAGE='no'
