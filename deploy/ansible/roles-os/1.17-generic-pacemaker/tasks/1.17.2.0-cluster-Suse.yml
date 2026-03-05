@@ -70,14 +70,14 @@
   block:
 
     - name:                            "1.17 Generic Pacemaker - Ensure corosync is configured"
-      ansible.builtin.shell:           "crm cluster init -y -u corosync --interface eth0"
+      ansible.builtin.shell:           "crm cluster init -y  --interface eth0"
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
 
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (hdb_{{ db_sid | upper }}) is configured"
       # ha-cluster-init is not supported in SUSE 15 SP4 anymore, crm syntax required
-      # ansible.builtin.shell:         "ha-cluster-init -y --name 'hdb_{{ db_sid | upper }}' --interface eth0 --no-overwrite-sshkey"
-      ansible.builtin.shell:           "crm cluster init -y --name 'hdb_{{ db_sid | upper }}' --interface eth0 --no-overwrite-sshkey"
+      # ansible.builtin.shell:         "ha-cluster-init -y --name 'hdb_{{ db_sid | upper }}' --interface eth0 "
+      ansible.builtin.shell:           "crm cluster init -y --name 'hdb_{{ db_sid | upper }}' --interface eth0 "
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
@@ -87,7 +87,7 @@
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (hdb_{{ db_sid | upper }}) is configured - SBD"
       ansible.builtin.shell: |
                                        crm cluster init -y --name 'hdb_{{ db_sid | upper }}' --interface eth0 \
-                                       --no-overwrite-sshkey --sbd-device="{{ sbd_device }}"
+                                        --sbd-device="{{ sbd_device }}"
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
@@ -95,7 +95,7 @@
                                        - not database_cluster_type == "AFA"
 
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (scs_{{ sap_sid | upper }}) is configured"
-      ansible.builtin.shell:           "crm cluster init -y --name 'scs_{{ sap_sid | upper }}' --interface eth0 --no-overwrite-sshkey"
+      ansible.builtin.shell:           "crm cluster init -y --name 'scs_{{ sap_sid | upper }}' --interface eth0 "
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
@@ -105,7 +105,7 @@
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (scs_{{ sap_sid | upper }}) is configured - SBD"
       ansible.builtin.shell: |
                                        crm cluster init -y --name 'scs_{{ sap_sid | upper }}' --interface eth0 \
-                                       --no-overwrite-sshkey --sbd-device="{{ sbd_device }}"
+                                        --sbd-device="{{ sbd_device }}"
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
@@ -113,7 +113,7 @@
                                        - not scs_cluster_type == "AFA"
 
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (db2_{{ db_sid | upper }}) is configured"
-      ansible.builtin.shell:           "crm cluster init -y --name 'db2_{{ db_sid | upper }}' --interface eth0 --no-overwrite-sshkey"
+      ansible.builtin.shell:           "crm cluster init -y --name 'db2_{{ db_sid | upper }}' --interface eth0 "
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
@@ -123,7 +123,7 @@
     - name:                            "1.17 Generic Pacemaker - Ensure cluster (db2_{{ db_sid | upper }}) is configured - SBD"
       ansible.builtin.shell: |
                                        crm cluster init -y --name 'db2_{{ db_sid | upper }}' --interface eth0 \
-                                       --no-overwrite-sshkey --sbd-device="{{ sbd_device }}"
+                                        --sbd-device="{{ sbd_device }}"
       register:                        crm_init_result
       failed_when:                     crm_init_result.rc > 1
       when:
