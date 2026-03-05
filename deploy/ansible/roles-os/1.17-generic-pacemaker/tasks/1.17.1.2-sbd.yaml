@@ -350,10 +350,11 @@
   ansible.builtin.systemd:
     daemon_reload:                         true
 
-- name:                                    "systemctl enable sbd"
+- name:                                    "systemctl enable and start sbd"
   ansible.builtin.systemd:
     name:                                  sbd
     enabled:                               true
+    state:                                 started
     daemon_reload:                         true
   when:
                                             - (database_cluster_type == "ASD")   or
