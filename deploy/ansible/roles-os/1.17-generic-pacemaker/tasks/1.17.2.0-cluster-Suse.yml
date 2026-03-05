@@ -153,6 +153,18 @@
     src:                               corosync.conf.j2
     dest:                              /etc/corosync/corosync.conf
     mode:                              0600
+  when:
+    - "'corosync' in ansible_facts.packages"
+    - ansible_facts.packages.corosync[0].version.split('.')[0] | int != 3
+
+- name:                                "1.17 Generic Pacemaker - Ensure cluster configuration contains correct details v3"
+  ansible.builtin.template:
+    src:                               corosyncv3.conf.j2
+    dest:                              /etc/corosync/corosync.conf
+    mode:                              0600
+  when:
+    - "'corosync' in ansible_facts.packages"
+    - ansible_facts.packages.corosync[0].version.split('.')[0] | int != 3
 
 - name:                                "1.17 Generic Pacemaker - Ensure the corosync service is restarted on primary node."
   ansible.builtin.systemd:
