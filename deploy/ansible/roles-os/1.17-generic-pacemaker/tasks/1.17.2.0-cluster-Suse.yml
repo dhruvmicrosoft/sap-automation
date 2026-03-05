@@ -296,6 +296,7 @@
                                          (database_cluster_type == "ISCSI") or
                                          (scs_cluster_type      == "ASD")   or
                                          (scs_cluster_type      == "ISCSI")
+                                       - inventory_hostname == primary_instance_name
   block:
 
     - name:                            "1.17 Generic Pacemaker - Restart all cluster services on all members"
