@@ -7,7 +7,7 @@ resource "azurerm_storage_account" "hanashared" {
   count                                = var.NFS_provider == "AFS" && var.database.scale_out ? (
                                            try(length(var.hanashared_id) > 0, false) ? (
                                              0) : (
-                                             var.use_single_hana_shared ? 1 : length(var.database.zones)
+                                             var.use_single_hana_shared ? 1 : max(2,length(var.database.zones))
                                            )) : (
                                            0
                                          )
