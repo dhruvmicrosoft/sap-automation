@@ -65,6 +65,12 @@
     state:                             stopped
   failed_when:                         false
 
+- name:                                "1.17 Generic Pacemaker - Ensure the firewall service is configured to allow High Availability traffic"
+  ansible.posix.firewalld:
+    service:                           high-availability
+    state:                             enabled
+    permanent:                         true
+
 - name:                                "1.17 Generic Pacemaker - Ensure Primary node initiates the Cluster"
   when:                                ansible_hostname == primary_instance_name
   block:
