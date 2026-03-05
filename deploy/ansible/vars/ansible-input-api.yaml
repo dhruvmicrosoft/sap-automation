@@ -1,317 +1,315 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
-
 ---
 # API Input template with defaults
 
-become_user_name:                       root
-oracle_user_name:                       oracle
-grid_user_name:                         grid
-orchestration_ansible_user:             azureadm
+become_user_name: root
+oracle_user_name: oracle
+grid_user_name: grid
+orchestration_ansible_user: azureadm
 # ------------------- Begin - SDAF Ansible Version ---------------------------8
-SDAF_Version:                           "3.19.0.0"
+SDAF_Version: "3.19.0.0"
 
 # ------------------- End - SDAF Ansible Version ---------------------------8
 
 # ------------------- Begin - OS Config Settings variables -------------------8
-chrony_pool:                            ""
-chrony_servers:                         []
-timezone:                               "Etc/GMT"
-suse_subscription_id:                   ""                                      # SUSE registration code for BYOS/BYOL images. Leave empty for PAYG marketplace images.
+chrony_pool: ""
+chrony_servers: []
+timezone: "Etc/GMT"
+ssh_config_path: "/etc/ssh/sshd_config" # Default SSH config path, overridden for SLES 16+
+suse_subscription_id: "" # SUSE registration code for BYOS/BYOL images. Leave empty for PAYG marketplace images.
 # -------------------- End - OS Config Settings variables --------------------8
 
 # --------------------- Begin - BOM Processing variables ---------------------8
 # Default BoM Processing variables
-bom_suffix:                             ""                                      # MKD 20221201 Dynamic BOM
-sapbits_bom_files:                      "sapfiles"
-target_media_location:                  "/usr/sap/install"
+bom_suffix: "" # MKD 20221201 Dynamic BOM
+sapbits_bom_files: "sapfiles"
+target_media_location: "/usr/sap/install"
 # download_directory:                     "/mnt/downloads"                      # MKD 20221212 Dynamic BOM - become root mitigation
 # download_directory:                     "~/tmp/downloads"
 # KFO 20220102 ansible_env.HOME is not available on Windows
-download_directory:                     "{% if ansible_env.HOME is defined %}{{ ansible_env.HOME }}{% else %}/mnt/downloads{% endif %}/tmp/downloads"
-check_storage_account:                  true
-bom_processing_become:                  true                                    # BOM processing as root user
-deployer_free_temp_disk_space:          100                                     # Free disk space requirement on deployer
-is_run_with_infraCreate_only:           false                                   # For situations when you want to run the playbooks 01 & 02 without a BOM
-is_executed_by_acss:                    false                                   # For situations when code is executed by acss
-BOM_directory:                         "{{ playbook_dir }}/BOM-catalog"
+download_directory: "{% if ansible_env.HOME is defined %}{{ ansible_env.HOME }}{% else %}/mnt/downloads{% endif %}/tmp/downloads"
+check_storage_account: true
+bom_processing_become: true # BOM processing as root user
+deployer_free_temp_disk_space: 100 # Free disk space requirement on deployer
+is_run_with_infraCreate_only: false # For situations when you want to run the playbooks 01 & 02 without a BOM
+is_executed_by_acss: false # For situations when code is executed by acss
+BOM_directory: "{{ playbook_dir }}/BOM-catalog"
 
-always_upload_jinja_templates:         true
+always_upload_jinja_templates: true
 
 # -------------------------------------+---------------------------------------8
 
 # SAP Configuration for templates and install
-hana_use_master_password:              y
-hana_password_copy:                    ""
-hana_backup_path:                      /hana/backup
-sapinst_enforce_crl:                   true                                    # CRL is enable by default, in air-gapped environment this might need to be disabled (SAP NOTE: 3207613)
+hana_use_master_password: y
+hana_password_copy: ""
+hana_backup_path: /hana/backup
+sapinst_enforce_crl: true # CRL is enable by default, in air-gapped environment this might need to be disabled (SAP NOTE: 3207613)
 # Note: the spacing and lining of Jinja2 expression is critical here, lest we end up with a stray character in the path
-hana_data_basepath:                    "{% if database_scale_out %}/hana/data/{{ db_sid | upper }}{% else %}/hana/data{% endif %}"
-hana_log_basepath:                     "{% if database_scale_out %}/hana/log/{{ db_sid | upper }}{% else %}/hana/log{% endif %}"
-hana_shared_basepath:                  "/hana/shared"
-hana_usrsap_basepath:                  "/usr/sap"
-hana_autostart:                        false                                   # When set to true, will configure autostart parameter to 1 for HANA nodes. Only applicable for Scale out
-sap_sid:                               ""                                      # REQUIRED - SAP Install
-download_basket_dir:                   "{{ target_media_location }}/download_basket"
-db_sid:                                "XDB"                                   # Default
-db_instance_number:                    "00"                                    # Default
-hana_schema:                           "SAPHANADB"
-pas_instance_number:                   "00"
-web_instance_number:                   "00"
-main_password:                         ""                                      # SAP Install
-sap_fqdn:                              ""                                      # SAP Install
-sapadm_uid:                            2100
-sapinst_gid:                           2001
-sapsys_gid:                            2000
-lss_uid:                               2040
-lss_gid:                               2050
-drop_schema:                           false
+hana_data_basepath: "{% if database_scale_out %}/hana/data/{{ db_sid | upper }}{% else %}/hana/data{% endif %}"
+hana_log_basepath: "{% if database_scale_out %}/hana/log/{{ db_sid | upper }}{% else %}/hana/log{% endif %}"
+hana_shared_basepath: "/hana/shared"
+hana_usrsap_basepath: "/usr/sap"
+hana_autostart: false # When set to true, will configure autostart parameter to 1 for HANA nodes. Only applicable for Scale out
+sap_sid: "" # REQUIRED - SAP Install
+download_basket_dir: "{{ target_media_location }}/download_basket"
+db_sid: "XDB" # Default
+db_instance_number: "00" # Default
+hana_schema: "SAPHANADB"
+pas_instance_number: "00"
+web_instance_number: "00"
+main_password: "" # SAP Install
+sap_fqdn: "" # SAP Install
+sapadm_uid: 2100
+sapinst_gid: 2001
+sapsys_gid: 2000
+lss_uid: 2040
+lss_gid: 2050
+drop_schema: false
 
-sap_trans_permissions:                 775
-use_msi_for_clusters:                  false
-hana_components:                       "all"
+sap_trans_permissions: 775
+use_msi_for_clusters: false
+hana_components: "all"
 
-instance_type:                         "ASCS"
+instance_type: "ASCS"
 
-dbload_retry_count:                    120
+dbload_retry_count: 120
 
-single_server:                         false
+single_server: false
 
-hana_scaleout_wait_for_start_in_sec:   300
-scs_wait_for_start_in_sec:             300
-hana_wait_for_start_in_sec:            300
-hana_wait_for_stop_in_sec:             120
+hana_scaleout_wait_for_start_in_sec: 300
+scs_wait_for_start_in_sec: 300
+hana_wait_for_start_in_sec: 300
+hana_wait_for_stop_in_sec: 120
 
 # Default sizes for volumes
 
-sapmnt_volume_size:                    32g
-usrsap_volume_size:                    32g
-hanashared_volume_size:                32g
+sapmnt_volume_size: 32g
+usrsap_volume_size: 32g
+hanashared_volume_size: 32g
 
-hana_data_stripe_size:                 256
-hana_log_stripe_size:                  64
-hana_bkp_stripe_size:                  1024
+hana_data_stripe_size: 256
+hana_log_stripe_size: 64
+hana_bkp_stripe_size: 1024
 
-db2_log_stripe_size:                   64
-db2_data_stripe_size:                  256
-db2_temp_stripe_size:                  128
+db2_log_stripe_size: 64
+db2_data_stripe_size: 256
+db2_temp_stripe_size: 128
 
-sybase_data_stripe_size:               256
-sybase_log_stripe_size:                64
-sybase_temp_stripe_size:               128
+sybase_data_stripe_size: 256
+sybase_log_stripe_size: 64
+sybase_temp_stripe_size: 128
 
-oracle_data_stripe_size:               256
-oracle_log_stripe_size:                128
+oracle_data_stripe_size: 256
+oracle_log_stripe_size: 128
 
-default_stripe_size:                   128
+default_stripe_size: 128
 
 # Custom virtual hostnames
-custom_db_virtual_hostname:            ""
-custom_ers_virtual_hostname:           ""
-custom_pas_virtual_hostname:           ""
-custom_scs_virtual_hostname:           ""
+custom_db_virtual_hostname: ""
+custom_ers_virtual_hostname: ""
+custom_pas_virtual_hostname: ""
+custom_scs_virtual_hostname: ""
 
 # Custom ASCS and ERS NFS filesystem devices when not using AFS or ANF
-ascs_filesystem_device:                ""
-ers_filesystem_device:                 ""
+ascs_filesystem_device: ""
+ers_filesystem_device: ""
 
 # DB2 specific parameters
-db2sysadm_gid:                         3000
-db2sysctrl_gid:                        3001
-db2sysmaint_gid:                       3002
-db2sysmon_gid:                         3003
-db2sidadm_uid:                         3004
-db2sapsid_uid:                         3005 # Uid of the database connect user
-db2hadr_port1:                         51012
-db2hadr_port2:                         51013
+db2sysadm_gid: 3000
+db2sysctrl_gid: 3001
+db2sysmaint_gid: 3002
+db2sysmon_gid: 3003
+db2sidadm_uid: 3004
+db2sapsid_uid: 3005 # Uid of the database connect user
+db2hadr_port1: 51012
+db2hadr_port2: 51013
 # Name of the database connect user for ABAP. Default value is 'sap<sapsid>'.
-db2_abap_connect_user:                 ""
+db2_abap_connect_user: ""
 
-tmp_directory:                         "/var/tmp"
-url_internet:                          "https://azure.status.microsoft/en-us/status"                 # URL to use for internet access checks"
-check_outbound:                        false
+tmp_directory: "/var/tmp"
+url_internet: "https://azure.status.microsoft/en-us/status" # URL to use for internet access checks"
+check_outbound: false
 
 # ASE specific parameters
 # ase_sid:                     "ASE"
-asesysadm_gid:                         5000
-asedbadm_gid:                          5001
-asesidadm_uid:                         5002
-asesapsid_uid:                         5003
+asesysadm_gid: 5000
+asedbadm_gid: 5001
+asesidadm_uid: 5002
+asesapsid_uid: 5003
 
 # Oracle specific parameters
-ora_sid:                               "ORA"
-dba_gid:                               3100
-oper_gid:                              3101
-asmoper_gid:                           3102
-asmadmin_gid:                          3103
-asmdba_gid:                            3104
-oinstall_gid:                          3105
-backupdba_gid:                         3106
-dgdba_gid:                             3107
-kmdba_gid:                             3108
-racdba_gid:                            3109
-orasid_uid:                            3200
-oracle_uid:                            3201
-hdbshm_gid:                            2002
-observer_uid:                          4000
-grid_uid:                              3300
+ora_sid: "ORA"
+dba_gid: 3100
+oper_gid: 3101
+asmoper_gid: 3102
+asmadmin_gid: 3103
+asmdba_gid: 3104
+oinstall_gid: 3105
+backupdba_gid: 3106
+dgdba_gid: 3107
+kmdba_gid: 3108
+racdba_gid: 3109
+orasid_uid: 3200
+oracle_uid: 3201
+hdbshm_gid: 2002
+observer_uid: 4000
+grid_uid: 3300
 
-oracle_grid_home_zip:                  LINUX.X64_193000_grid_home.zip
-oracle_client_zip:                     LINUX.X64_193000_client.zip
-
+oracle_grid_home_zip: LINUX.X64_193000_grid_home.zip
+oracle_client_zip: LINUX.X64_193000_client.zip
 
 ## SAP Instance Numbers
 
-scs_instance_number:                   "00"                                    # SAP Install
-ers_instance_number:                   "02"
-app_instance_number:                   "00"
+scs_instance_number: "00" # SAP Install
+ers_instance_number: "02"
+app_instance_number: "00"
 
-sidadm_uid:                            2003
-web_sidadm_uid:                        2004
-hdbadm_uid:                            2200
-scs_lb_ip:                             ""                                      # SAP HA
-database_loadbalancer_ip:              ""                                      # SAP HA
-reinstall:                             false                                   # Provide a way to override the idempotency flags for SAP tasks
+sidadm_uid: 2003
+web_sidadm_uid: 2004
+hdbadm_uid: 2200
+scs_lb_ip: "" # SAP HA
+database_loadbalancer_ip: "" # SAP HA
+reinstall: false # Provide a way to override the idempotency flags for SAP tasks
 
-ora_release:                           19
-ora_version:                           19.0.0
-ora_supported_version:                 19
-ora_compatible:                        19.0.0.0.0
+ora_release: 19
+ora_version: 19.0.0
+ora_supported_version: 19
+ora_compatible: 19.0.0.0.0
 
-PLATFORM:                              ""
-platform:                              ""
-password_cockpit_admin:                ""
-password_db_systemdb:                  ""
-password_ha_db_cluster:                ""
-password_os_sapadm:                    ""
-password_os_sidadm:                    ""
-password_db_xsa_admin:                 ""
+PLATFORM: ""
+platform: ""
+password_cockpit_admin: ""
+password_db_systemdb: ""
+password_ha_db_cluster: ""
+password_os_sapadm: ""
+password_os_sidadm: ""
+password_db_xsa_admin: ""
 
-download_templates:                     false
-prometheus:                             false                                   # Install Prometheus Monitoring Agent
+download_templates: false
+prometheus: false # Install Prometheus Monitoring Agent
 
 # ------------------- Begin - Windows Processing variables -------------------8
 # Default BoM Processing variables for Windows
-target_media_location_windows:         'C:\sap'                                # Default
-sap_drive:                             'S:'
-download_directory_windows:            '\\{{ scs_server }}\SAP'
-download_directory_Drive:              'Z:'
-sap_deployment_automation:             'C:\sap_deployment_automation'
-tmp_directory_windows:                 '{{ sap_deployment_automation }}\tmp\'
-log_dir_windows:                       '{{ sap_deployment_automation }}\logs\'
-mssserver_version:                     'mssserver2019'
+target_media_location_windows: 'C:\sap' # Default
+sap_drive: 'S:'
+download_directory_windows: '\\{{ scs_server }}\SAP'
+download_directory_Drive: 'Z:'
+sap_deployment_automation: 'C:\sap_deployment_automation'
+tmp_directory_windows: '{{ sap_deployment_automation }}\tmp\'
+log_dir_windows: '{{ sap_deployment_automation }}\logs\'
+mssserver_version: 'mssserver2019'
 # log_file_windows:                       'C:\Program Files'
 
 # Windows AD specific parameters
 domain_name:
-domain_ou_path:                         ""
-domain_service_account:                 "{{ adsvc_account }}"
-domain_service_password:                "{{ adsvc_password }}"
-domain_user:                            '{{ sap_sid }}adm@{{ domain_name }}'
-domain_user_password:                   "{{ winadm_password }}"
-sid_service_password:                   "{{ svc_password }}"
-win_sap_admin:                          "SAP_{{ sap_sid | upper }}_GlobalAdmin"
+domain_ou_path: ""
+domain_service_account: "{{ adsvc_account }}"
+domain_service_password: "{{ adsvc_password }}"
+domain_user: '{{ sap_sid }}adm@{{ domain_name }}'
+domain_user_password: "{{ winadm_password }}"
+sid_service_password: "{{ svc_password }}"
+win_sap_admin: "SAP_{{ sap_sid | upper }}_GlobalAdmin"
 
 # Windows patch releated parameters
 
-win_updates_reject_list:                ["KB5034439"]
-win_updates_accept_list:                []
+win_updates_reject_list: [ "KB5034439" ]
+win_updates_accept_list: []
 
 # SQL Server specific parameters
-use_sql_for_SAP:                        true
-data_disks:                             F:\{{ sap_sid | upper }}DATA1\{{ sap_sid | upper }}4DATA1.mdf,G:\{{ sap_sid | upper }}DATA2\{{ sap_sid | upper }}4DATA2.mdf,H:\{{ sap_sid | upper }}DATA3\{{ sap_sid | upper }}4DATA3.mdf,I:\{{ sap_sid | upper }}DATA4\{{ sap_sid | upper }}4DATA4.mdf
-log_disks:                              J:\{{ sap_sid | upper }}LOG1\{{ sap_sid | upper }}4LOG1.ldf
+use_sql_for_SAP: true
+data_disks: F:\{{ sap_sid | upper }}DATA1\{{ sap_sid | upper }}4DATA1.mdf,G:\{{ sap_sid | upper }}DATA2\{{ sap_sid | upper }}4DATA2.mdf,H:\{{ sap_sid | upper }}DATA3\{{ sap_sid | upper }}4DATA3.mdf,I:\{{ sap_sid | upper }}DATA4\{{ sap_sid | upper }}4DATA4.mdf
+log_disks: J:\{{ sap_sid | upper }}LOG1\{{ sap_sid | upper }}4LOG1.ldf
 
-win_mapped_drive:                       Z
+win_mapped_drive: Z
 
-win_sql_svc_account:                    'NT SERVICE\MSSQLSERVER'
-win_sqlagent_svc_account:               'NT SERVICE\SQLSERVERAGENT'
-win_cluster_svc_account:                'NT SERVICE\ClusSvc'
-mssql_instance_name:                    'MSSQLSERVER'
-mssql_lb_probeport:                     59999
-mssql_collation:                        'SQL_Latin1_General_CP850_BIN2'
+win_sql_svc_account: 'NT SERVICE\MSSQLSERVER'
+win_sqlagent_svc_account: 'NT SERVICE\SQLSERVERAGENT'
+win_cluster_svc_account: 'NT SERVICE\ClusSvc'
+mssql_instance_name: 'MSSQLSERVER'
+mssql_lb_probeport: 59999
+mssql_collation: 'SQL_Latin1_General_CP850_BIN2'
 
 # "CSD"  if you are using the cluster shared drive or Choose "FS" if you are using the File Share.
-win_cluster_share_type:                 'CSD'
+win_cluster_share_type: 'CSD'
 
 # -------------------------------------+---------------------------------------8
 
 # Keyvault
-deployer_kv_name_secret:                "deployer-kv-name"                      # Name of secret containing the deployer keyvault name in the workload zone keyvault
-sapbits_location_secret:                "sapbits-location-base-path"            # Name of secret containing the SAP Binaries storage account container URL
-sapbits_sas_token_secret:               "sapbits-sas-token"                     # Name of secret containing the SAP Binaries storage account SAS token
+deployer_kv_name_secret: "deployer-kv-name" # Name of secret containing the deployer keyvault name in the workload zone keyvault
+sapbits_location_secret: "sapbits-location-base-path" # Name of secret containing the SAP Binaries storage account container URL
+sapbits_sas_token_secret: "sapbits-sas-token" # Name of secret containing the SAP Binaries storage account SAS token
 
 # NFS
-NFS_provider:                           "NONE"
-NFS_version:                            "NFSv4.1"
-use_simple_mount:                       false
+NFS_provider: "NONE"
+NFS_version: "NFSv4.1"
+use_simple_mount: false
 # Indicate if Encryption in Transit is to be used for AFS shares
-use_eit_for_afs:                        false
+use_eit_for_afs: false
 
 # Cluster - Defaults
 # database_high_availability:            false
-database_scale_out:                    false
-database_cluster_type:                 "AFA"
-database_no_standby:                   false                                    # when set to true, will deploy the scale out - ANF cluster without a standby node.
-database_active_active:                false                                    # when set to true, database will deployed with Active/Active (read enabled) configuration (HANA only)
+database_scale_out: false
+database_cluster_type: "AFA"
+database_no_standby: false # when set to true, will deploy the scale out - ANF cluster without a standby node.
+database_active_active: false # when set to true, database will deployed with Active/Active (read enabled) configuration (HANA only)
 database_active_active_loadbalancer_ip: ""
 # scs_high_availability:                 false
-scs_cluster_type:                      "AFA"
+scs_cluster_type: "AFA"
 # Configure pacemaker for Azure scheduled events
-cluster_use_scheduled_events_agent:    true
+cluster_use_scheduled_events_agent: true
 # Custom pacemaker NFS filesystem and SAP monitor timeouts
-custom_cluster_fs_mon_timeout:         ""
-custom_cluster_sap_mon_timeout:        ""
+custom_cluster_fs_mon_timeout: ""
+custom_cluster_sap_mon_timeout: ""
 
-use_fence_kdump:                       false
+use_fence_kdump: false
 
 # For new we default to false unless the user chooses to enable it, when using
 # the SAP HANA-SR ANGI (A New Generation Interface)
-use_hanasr_angi:                       false
+use_hanasr_angi: false
 
 # ------------------- Begin - SAP SWAP settings variables --------------------8
 sap_swap:
-  - { tier: "scs",                swap_size_mb: "4096"  }
-  - { tier: "ers",                swap_size_mb: "4096"  }
-  - { tier: "pas",                swap_size_mb: "20480" }
-  - { tier: "app",                swap_size_mb: "20480" }
-  - { tier: "web",                swap_size_mb: "20480" }
-  - { tier: "hana",               swap_size_mb: "2048"  }
-  - { tier: "db2",                swap_size_mb: "20480" }
-  - { tier: "sybase",             swap_size_mb: "20480" }
-  - { tier: "oracle",             swap_size_mb: "20480" }
-  - { tier: "oracle-asm",         swap_size_mb: "20480" }
-  - { tier: "oracle-multi-sid",   swap_size_mb: "20480" }
-  - { tier: "observer",           swap_size_mb: "2048"  }
-  - { tier: 'sqlserver',          swap_size_mb: '20480' }
+- { tier: "scs", swap_size_mb: "4096" }
+- { tier: "ers", swap_size_mb: "4096" }
+- { tier: "pas", swap_size_mb: "20480" }
+- { tier: "app", swap_size_mb: "20480" }
+- { tier: "web", swap_size_mb: "20480" }
+- { tier: "hana", swap_size_mb: "2048" }
+- { tier: "db2", swap_size_mb: "20480" }
+- { tier: "sybase", swap_size_mb: "20480" }
+- { tier: "oracle", swap_size_mb: "20480" }
+- { tier: "oracle-asm", swap_size_mb: "20480" }
+- { tier: "oracle-multi-sid", swap_size_mb: "20480" }
+- { tier: "observer", swap_size_mb: "2048" }
+- { tier: 'sqlserver', swap_size_mb: '20480' }
 # --------------------- End - SAP SWAP settings variables --------------------8
 
 # ------------------- Begin - Azure Monitor for SAP (AMS) variables ------------8
-ams_resource_id:                        ""
-enable_os_monitoring:                   false
-enable_ha_monitoring:                   false
+ams_resource_id: ""
+enable_os_monitoring: false
+enable_ha_monitoring: false
 # ------------------- End - Azure Monitor for SAP (AMS) variables --------------8
 
 # ------------------- Begin - LVM Configuration variables ----------------------8
-vg_root:                                "rootvg"
-lv_root_size:                           10g
-lv_root_size_db:                        20g
-lv_tmp_size:                            10g
+vg_root: "rootvg"
+lv_root_size: 10g
+lv_root_size_db: 20g
+lv_tmp_size: 10g
 # ------------------- End - LVM Configuration variables ------------------------8
 
-python_version:                        "python3"
-
+python_version: "python3"
 
 UIDs:
   HANA:
-    uid:                               "{{ sidadm_uid }}"
+    uid: "{{ sidadm_uid }}"
   ORACLE:
-    uid:                               "{{ sidadm_uid }}"
+    uid: "{{ sidadm_uid }}"
   ORACLE-ASM:
-    uid:                               "{{ sidadm_uid }}"
+    uid: "{{ sidadm_uid }}"
   SYBASE:
-    uid:                               "{{ asesidadm_uid }}"
+    uid: "{{ asesidadm_uid }}"
   DB2:
-    uid:                               "{{ sidadm_uid }}"
+    uid: "{{ sidadm_uid }}"
   SQLSERVER:
-    uid:                               "{{ sidadm_uid }}"
+    uid: "{{ sidadm_uid }}"
