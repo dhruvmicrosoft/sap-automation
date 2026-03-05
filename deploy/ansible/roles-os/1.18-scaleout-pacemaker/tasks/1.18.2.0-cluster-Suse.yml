@@ -84,7 +84,6 @@
       failed_when:                     crm_init_result.rc > 1
 
 
-
 - name:                                "1.18.2.0 Generic Pacemaker - Ensure additional nodes joins the Cluster"
   become:                              true
   become_user:                         root
