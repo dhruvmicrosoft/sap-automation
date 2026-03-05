@@ -80,20 +80,36 @@
           when:
             - ansible_facts.packages['yast2-sap-ha'] is defined
 
-        # Ensure SAPHANA SR Scaleout package is installed
-        - name:                        "1.18.2 Generic Pacemaker - Ensure SAPHanaSR-ScaleOut package is installed"
-          ansible.builtin.package:
-            name:                      SAPHanaSR-ScaleOut
-            state:                     present
-          when:
-            - ansible_facts.packages['SAPHanaSR-ScaleOut'] is not defined
+    # Ensure SAPHANA SR Scaleout package is installed (for SLES < 16 when not using angi)
+    - name:                            "Ensure SAPHanaSR-ScaleOut package is installed"
+      ansible.builtin.package:
+        name:                          SAPHanaSR-ScaleOut
+        state:                         present
+      when:
+        - ansible_os_family | upper == "SUSE"
+        - ansible_facts.packages['SAPHanaSR-ScaleOut'] is not defined
+        - not use_hanasr_angi
+        - ansible_distribution_major_version | int < 16
 
-        - name:                        "1.18.2 Generic Pacemaker - Ensure SAPHanaSR-ScaleOut-doc package is installed"
-          ansible.builtin.package:
-            name:                      SAPHanaSR-ScaleOut-doc
-            state:                     present
-          when:
-            - ansible_facts.packages['SAPHanaSR-ScaleOut-doc'] is not defined
+    - name:                            "Ensure SAPHanaSR-ScaleOut-doc package is installed"
+      ansible.builtin.package:
+        name:                          SAPHanaSR-ScaleOut-doc
+        state:                         present
+      when:
+        - ansible_os_family | upper == "SUSE"
+        - ansible_facts.packages['SAPHanaSR-ScaleOut-doc'] is not defined
+        - not use_hanasr_angi
+        - ansible_distribution_major_version | int < 16
+
+    # Ensure SAPHANA SR angi package is installed (for SLES 15.4+ when using angi OR SLES 16+ always)
+    - name:                            "Ensure SAPHanaSR-angi package is installed"
+      ansible.builtin.package:
+        name:                          SAPHanaSR-angi
+        state:                         present
+      when:
+        - ansible_os_family | upper == "SUSE"
+        - ansible_facts.packages['SAPHanaSR-angi'] is not defined
+        - (use_hanasr_angi and ansible_distribution_version is version('15.4', '>=')) or (ansible_distribution_major_version | int >= 16)
 
 
 - name:                                "1.18.2 Generic Pacemaker - Implement the Scale out Resource Agent hook (REDHAT)"
