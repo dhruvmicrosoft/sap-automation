@@ -54,8 +54,7 @@
     - iscsid
     - iscsi
 
-
-- name:                                "1.18.1 Generic Pacemaker - Scale Out - iSCSI packages - Get node type on which we will operate"
+- name:                                "1.18.1 iSCSI packages - Get node type on which we will operate"
   ansible.builtin.set_fact:
     iscsi_node_type: >-
                                        {%- set _clusterType = 'scs' -%}
@@ -64,6 +63,9 @@
                                        {%- endif -%}
                                        {%- if ('db2' in supported_tiers) -%}
                                        {%-   set _clusterType = 'db' -%}
+                                       {%- endif -%}
+                                       {%- if ('observer' in supported_tiers) -%}
+                                       {%-   set _clusterType = 'observer' -%}
                                        {%- endif -%}
                                        {{- _clusterType -}}
 
@@ -86,14 +88,14 @@
 
 - name:                                "1.18.1 iSCSI packages - Compute DB node index for scale-out IQN assignment"
   when:
-                                       - iscsi_node_type == 'db'
+                                       - iscsi_node_type in ['db', 'observer']
   ansible.builtin.set_fact:
     db_all_hosts:                      "{{ groups[sap_sid | upper + '_DB'] | default([]) +
                                            groups[sap_sid | upper + '_OBSERVER_DB'] | default([]) }}"
 
 - name:                                "1.18.1 iSCSI packages - Set this node's IQN based on group position"
   when:
-                                       - iscsi_node_type == 'db'
+                                       - iscsi_node_type in ['db', 'observer']
   ansible.builtin.set_fact:
     node_iscsi_index:                  "{{ db_all_hosts.index(inventory_hostname) }}"
     acl_name_db_node:                  "iqn.2006-04.{{ sap_sid | lower }}-xdb-{{ db_all_hosts.index(inventory_hostname) }}.local:{{ sap_sid | lower }}-xdb-{{ db_all_hosts.index(inventory_hostname) }}"
@@ -163,17 +165,7 @@
 
 - name:                                "1.18.1 iSCSI configuration - replace InitiatorName - DB (scale-out)"
   when:
-                                       - iscsi_node_type == 'db'
-                                       - acl_name_db_node is defined
-  ansible.builtin.replace:
-    path:                              /etc/iscsi/initiatorname.iscsi
-    regexp:                            '^InitiatorName=.*$'
-    replace:                           "InitiatorName={{ acl_name_db_node }}"
-    backup:                            true
-
-- name:                                "1.18.1 iSCSI configuration - replace InitiatorName - Observer (scale-out)"
-  when:
-                                       - iscsi_node_type == 'observer'
+                                       - iscsi_node_type in ['db', 'observer']
                                        - acl_name_db_node is defined
   ansible.builtin.replace:
     path:                              /etc/iscsi/initiatorname.iscsi
