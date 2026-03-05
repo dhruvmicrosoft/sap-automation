@@ -171,7 +171,17 @@
     replace:                           "InitiatorName={{ acl_name_db_node }}"
     backup:                            true
 
-- name:                                "1.18.1 Generic Pacemaker - Scale Out - iSCSI configuration - restart iSCSI services"
+- name:                                "1.18.1 iSCSI configuration - replace InitiatorName - Observer (scale-out)"
+  when:
+                                       - iscsi_node_type == 'observer'
+                                       - acl_name_db_node is defined
+  ansible.builtin.replace:
+    path:                              /etc/iscsi/initiatorname.iscsi
+    regexp:                            '^InitiatorName=.*$'
+    replace:                           "InitiatorName={{ acl_name_db_node }}"
+    backup:                            true
+
+- name:                                "1.18.1 iSCSI configuration - restart iSCSI services"
   become:                              true
   become_user:                         root
   when:
@@ -206,7 +216,7 @@
         discover:                      true
       loop:                            "{{ iscsi_servers }}"
       when:
-                                       - iscsi_node_type in ['scs', 'db']
+                                       - iscsi_node_type in ['scs', 'db', 'observer']
                                        - iscsi_initiator_name == item.iqn
       register:                        discovery_result
 
@@ -223,7 +233,7 @@
         login:                         true
       loop:                            "{{ iscsi_servers }}"
       when:
-                                       - iscsi_node_type in ['scs', 'db']
+                                       - iscsi_node_type in ['scs', 'db', 'observer']
                                        - iscsi_initiator_name == item.iqn
       register:                        login_result
       failed_when:
@@ -244,7 +254,7 @@
         auto_node_startup:             true
       loop:                            "{{ iscsi_servers }}"
       when:
-                                       - iscsi_node_type in ['scs', 'db']
+                                       - iscsi_node_type in ['scs', 'db', 'observer']
                                        - iscsi_initiator_name == item.iqn
       register:                        startup_result
 
