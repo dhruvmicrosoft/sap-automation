@@ -267,7 +267,7 @@
 #
 
 - name:                                "{{ task_prefix }} Append the patch information"
-  when:                                bom.patch_information is defined
+  when:                                bom.patch_information is defined and not bom.patch_information == "null"
   ansible.builtin.set_fact:
     patch_information:                 "{% if patch_information is defined %}{{ patch_information + bom.patch_information | flatten(levels=1) }}{% else %}{{ bom.patch_information | flatten(levels=1) }}{% endif %}"
 
