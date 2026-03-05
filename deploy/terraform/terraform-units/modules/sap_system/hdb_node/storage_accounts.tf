@@ -100,7 +100,7 @@ resource "azurerm_private_endpoint" "hanashared" {
   count                                = var.NFS_provider == "AFS" && var.use_private_endpoint && var.database.scale_out ? (
                                           length(try(var.hanashared_private_endpoint_id, "")) > 0 ? (
                                             0) : (
-                                            var.use_single_hana_shared ? 1 : length(var.database.zones)
+                                            var.use_single_hana_shared ? 1 : max(2,length(var.database.zones))
                                           )) : (
                                           0
                                         )
