@@ -335,14 +335,14 @@
 
         - name:                        "1.17 Generic Pacemaker - Recreate Stonith SBD in cluster"
           ansible.builtin.shell: |
-                                       crm configure primitive stonith-sbd stonith:external/sbd \
+                                       crm configure primitive stonith-sbd fence_sbd \
                                          params pcmk_delay_max="15" \
                                          op monitor interval="600" timeout="15"
 
     - name:                            "1.17 Generic Pacemaker - Ensure Stonith SBD is configured in cluster"
       when:                            stonith_sbd_configured.rc != 0
       ansible.builtin.shell: |
-                                       crm configure primitive stonith-sbd stonith:external/sbd \
+                                       crm configure primitive stonith-sbd fence_sbd \
                                          params pcmk_delay_max="15" \
                                          op monitor interval="600" timeout="15"
 
