@@ -189,7 +189,7 @@
     - name:                                       "1.17 Generic Pacemaker - Add own public key to authorized_keys"
       ansible.posix.authorized_key:
         user:                                     root
-        key:                                      "{{ lookup('file', '/root/.ssh/id_ed25519.pub') }}"
+        key:                                      "{{ cluster_public_ssh_key.stdout }}"
         state:                                    present
 
     - name:                                       "1.17 Generic Pacemaker - Set SSH fact"
