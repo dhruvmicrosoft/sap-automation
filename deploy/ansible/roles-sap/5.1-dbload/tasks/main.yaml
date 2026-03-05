@@ -197,6 +197,11 @@
           ansible.builtin.set_fact:
             backup_path:               "{% if (backupdisks_count | int) == 0 %}/hana/data/backup{% else %}{{ hana_backup_path }}{% endif %}"
 
+
+        - name:                        "5.1 Database Load  - Set backup path for single-node configuration"
+          ansible.builtin.set_fact:
+            backup_path:               "{% if (backupdisks_count | int) == 0 %}/hana/data/backup{% else %}{{ hana_backup_path }}{% endif %}"
+
         - name:                        "5.1 Database Load  - Set backup path for HSR scale-out high availability configuration"
           when:
                                        - database_scale_out | default(false)
