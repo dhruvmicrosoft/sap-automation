@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
 # /*---------------------------------------------------------------------------8
 # Inputs:
 #   - function:     "source" or "dest" - indicates whether we are retrieving keys for source or target system
