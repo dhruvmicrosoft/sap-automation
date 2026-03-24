@@ -74,7 +74,7 @@
       ## Cluster Information
       - Cluster Configured: {{ discovered_facts.topology.cluster_configured }}
       - Virtual Hostname: {{ discovered_facts.topology.virtual_hostname }}
-    dest: "/tmp/scr_discovery_{{ scr_discovery_system_role }}_{{ discovered_facts.sap.sid | default('unknown') }}_{{ ansible_date_time.epoch }}.md"
+    dest: "/tmp/scr_discovery_{{ scr_discovery_system_role }}_{{ discovered_facts.sap.sid | default('unknown') }}_{{ ansible_date_time.epoch }}.txt"
   when: scr_discovery_output.create_inventory | default(true)
 
 - name: Update SCR state with discovered facts (if enabled)

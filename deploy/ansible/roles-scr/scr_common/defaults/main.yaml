@@ -1,41 +1,61 @@
 ---
-# defaults that don't need to be configured by user
-scr_log_dir: "{{ ansible_env.HOME | default('/tmp') }}/scr/logs"
-scr_datastore_root: "{{ ansible_env.HOME | default('/tmp') }}/scr/datastore" 
-scr_run_id: "{{ ansible_date_time.iso8601 }}"       # Unique identifier for this SCR run
+# /*---------------------------------------------------------------------------8
+# |  scr_common/defaults/main.yaml                                             |
+# |                                                                            |
+# |  Central configuration for all SCR roles and playbooks.                   |
+# |  Loaded via vars_files in playbook_scr_initialize.yaml.                   |
+# |                                                                            |
+# |  Override any value via --extra-vars on the command line or via           |
+# |  inventory group/host vars.                                               |
+# +------------------------------------4--------------------------------------*/
 
-# Datastore defaults
-scr_datastore_prefix: "scr"
-scr_state_blob_name: "scr_state.txt"
-scr_logs_folder_name: "logs"
-scr_exports_folder_name: "exports"
-scr_blob_content_type: "text/plain"
+# ── Controller paths ────────────────────────────────────────────────────────
+scr_log_dir:              "{{ ansible_env.HOME | default('/tmp') }}/scr/logs"
+scr_datastore_root:       "{{ ansible_env.HOME | default('/tmp') }}/scr/datastore"
 
-# Azure (user-configurable; override via inventory or GUI)
-scr_azure_subscription_id: "02993e58-2910-4b39-910c-aeccd207abf7"       # optional (used if you need it)
-scr_azure_resource_group: "MKDS0-EUS2-SAP_LIBRARY"        # e.g., "rg-sap-scr"
-scr_azure_storage_account: "scrblob"       # e.g., "sapscrops"
-scr_azure_container: "scr-runs"     # container where runs are stored
+# ── Run identity ────────────────────────────────────────────────────────────
+# scr_run_id and scr_blob_prefix are set dynamically in the playbook pre_tasks
+# using ansible_date_time so each run gets a unique folder in Azure.
+scr_run_id:               "{{ ansible_date_time.iso8601 }}"
 
-# -- MSI (no secrets required) --
+# ── Azure Blob Storage ───────────────────────────────────────────────────────
+scr_azure_subscription_id:  "02993e58-2910-4b39-910c-aeccd207abf7"
+scr_azure_resource_group:   "MKDS0-EUS2-SAP_LIBRARY"
+scr_azure_storage_account:  "mkds0eus2tfstate152"
+scr_azure_container:        "tfstate"         # existing container; SCR blobs land under scr-runs/ prefix
+
+# ── Authentication — MSI (managed identity) ──────────────────────────────────
+# The deployer VM's managed identity must have Storage Blob Data Contributor
+# on the storage account. No client secrets needed.
 scr_azure_use_managed_identity: true
+scr_auth_mode:              "msi"
 
-# SPN credentials (required when scr_auth_mode is "spn")
-scr_azure_spn_client_id: "d372a36b-1436-448f-8d18-57462e9b1de6"
-scr_azure_spn_client_secret: ""
-scr_azure_spn_tenant_id: "c01abe72-ffef-4ecc-bda0-937975b49e6b"
+# ── Source system ────────────────────────────────────────────────────────────
+# Note: scr_source_sid and scr_dest_sid must also be passed via --extra-vars
+# because they are needed by the playbook hosts: pattern before vars_files loads.
+scr_source_sid:             "X90"
+scr_source_prefix:          "MKDS1-EUS2-SAP00"
+scr_source_kv_name:         "MKDS1EUS2SAP00user54B"
 
-# defaults that should be configured by user
-scr_auth_mode: "spn"    #authentication mode: msi|spn"
-scr_source_sid: "X90"    #passed from GUI or CLI
-scr_target_sid: ""    #passed from GUI or CLI
-scr_db_type: "hana"  #database type: oracle, hana, ASE etc
-scr_refresh_protocol: "service"              #service|local|snapshot|export_import (how to copy db)
-scr_retained_tables:                         #list of tables to retain during refresh
+# ── Destination system ───────────────────────────────────────────────────────
+scr_dest_sid:               "X91"
+scr_dest_prefix:            "MKDS1-EUS2-SAP00"
+scr_dest_kv_name:           "MKDS1EUS2SAP00user54B"
+
+# ── SCR workflow parameters ──────────────────────────────────────────────────
+scr_db_type:                "hana"            # oracle | hana | ase
+scr_refresh_protocol:       "service"         # service | local | snapshot | export_import
+scr_retained_tables:                          # tables preserved during DB refresh
   - { name: "USR02", key: "MANDT" }
-scr_parity:                                  # Which components to check parity for
-  os: true
+scr_parity:                                   # parity checks to perform before copy
+  os:         true
   sap_kernel: true
-  db_kernel: true
+  db_kernel:  true
 
+# ── Legacy / unused defaults kept for backwards compatibility ────────────────
+scr_datastore_prefix:       "scr"
+scr_state_blob_name:        "scr_state.txt"
+scr_logs_folder_name:       "logs"
+scr_exports_folder_name:    "exports"
+scr_blob_content_type:      "text/plain"
 ...

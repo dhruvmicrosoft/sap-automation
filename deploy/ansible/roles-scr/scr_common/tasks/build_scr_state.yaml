@@ -1,5 +1,5 @@
 ---
-# Build complete SCR state JSON from scratch with discovered facts
+# Build complete SCR state Text from scratch with discovered facts
 # This replaces the template → merge → update workflow with a single build operation
 
 - name: Build complete SCR state structure

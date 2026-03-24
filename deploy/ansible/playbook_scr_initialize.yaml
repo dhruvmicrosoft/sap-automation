@@ -1,110 +1,276 @@
+# Commandline calling for testing:
+# ansible-playbook  --inventory    x_scr_testing_inventory_X90.yaml          \
+#                   --inventory    x_scr_testing_inventory_X91.yaml          \
+#                   --extra-vars   "scr_source_sid=X90 scr_dest_sid=X91"    \
+#                   playbook_scr_initialize.yaml                             \
+#                   -vvv
+#
+# Run individual stages using tags:
+#   --tags logging      Run Step 1 only  (init log on controller)
+#   --tags secrets      Run Step 2 only  (pull Key Vault SSH credentials)
+#   --tags upload       Run Step 3 only  (upload log to Azure)
+#   --tags discovery    Run Step 4 only  (system discovery on all hosts)
+#   --tags fetch        Run Step 5 only  (fetch reports + re-upload to Azure)
+#   --tags cleanup      Run Step 6 only  (remove temp SSH key files)
+#
+# Combine tags to run a subset, e.g.:
+#   --tags "secrets,discovery"
+
 ---
-# Simplified SCR Initialize and Discovery Playbook
-# This playbook discovers system facts and publishes complete state in one operation
+# /*----------------------------------------------------------------------------8
+# |                                                                            |
+# |      SCR Initialize — Log, Secrets, Discovery, Upload                     |
+# |                                                                            |
+# |  Steps:                                                                   |
+# |    1. Write initial log entry to controller            [tag: logging]     |
+# |    2. Pull SSH credentials from Key Vault (scr_keys)   [tag: secrets]     |
+# |    3. Upload initial log to Azure Blob Storage          [tag: upload]      |
+# |    4. Run system discovery on source + destination      [tag: discovery]   |
+# |    5. Fetch reports + re-upload all files to Azure      [tag: fetch]       |
+# |    6. Clean up temp SSH key files                       [tag: cleanup]     |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- hosts:                                "{{ scr_source_sid | upper }}_PAS :
+                                         {{ scr_source_sid | upper }}_DB  :
+                                         {{ scr_dest_sid   | upper }}_PAS :
+                                         {{ scr_dest_sid   | upper }}_DB"
 
-- name: SCR Discovery and State Management
-  hosts: localhost
-  connection: local
-  gather_facts: yes
-  
-  vars:
-    default_discovery_mode: "source"
-    
+  name:                                 "SCR Initialize"
+  gather_facts:                         false
+  any_errors_fatal:                     false    # a discovery failure on one host must not stop all others
+
+  # scr_source_sid and scr_dest_sid MUST be passed via --extra-vars at runtime.
+  # They are resolved before hosts: is evaluated, which is why they cannot come
+  # from role defaults — extra-vars is the only source available that early.
+
+  vars_files:
+    - roles-scr/scr_common/defaults/main.yaml    # loads scr_log_dir, scr_azure_*, etc.
+
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |   PRE-TASKS                                                                |
+# |     1. Write initial log entry to controller                               |
+# |     2. Pull Key Vault SSH credentials (scr_keys role)                      |
+# |     3. Upload initial log to Azure Blob Storage                            |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+  pre_tasks:
+
+    # -----------------------------------------------------------------------
+    # Step 1 — Gather controller datetime, create log dir, write initial log.
+    # -----------------------------------------------------------------------
+    - name:                             "Controller - Gather facts for timestamps"
+      ansible.builtin.setup:
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [logging, always]
+
+    - name:                             "Controller - Set run-scoped blob prefix"
+      ansible.builtin.set_fact:
+        scr_run_id:                     "{{ ansible_date_time.iso8601 }}"
+        scr_blob_prefix:                "scr/{{ ansible_date_time.iso8601 }}/"
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [logging, always]
+
+    - name:                             "Controller - Create SCR log directory"
+      ansible.builtin.file:
+        path:                           "{{ scr_log_dir }}"
+        state:                          directory
+        mode:                           "0755"
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [logging]
+
+    - name:                             "Controller - Write initial log entry"
+      ansible.builtin.copy:
+        dest:                           "{{ scr_log_dir }}/scr_initialize.log"
+        content: |
+          ============================================================
+          SCR INITIALIZE — RUN STARTED
+          ============================================================
+          Run ID  : {{ scr_run_id }}
+          Source  : {{ scr_source_sid }}
+          Target  : {{ scr_dest_sid }}
+          Started : {{ ansible_date_time.iso8601 }}
+          ============================================================
+
+          [{{ ansible_date_time.iso8601 }}] STEP 1 : Logging initialized
+          [{{ ansible_date_time.iso8601 }}] STEP 2 : Retrieving Key Vault secrets
+          [{{ ansible_date_time.iso8601 }}] STEP 3 : Uploading initial log to Azure Blob Storage
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [logging]
+
+
+    # -----------------------------------------------------------------------
+    # Step 2 — Pull SSH credentials from Key Vault using MSI.
+    #          Based directly on colleague's playbook_scr_mkd_testing1.yaml.
+    #          No client secret required — managed identity handles auth.
+    # -----------------------------------------------------------------------
+    - name:                             "Source - Get SSH credentials from Key Vault"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_keys
+      vars:
+        function:                       "source"
+        granularity:                    "workload"
+        kv_name:                        "{{ lookup('vars', 'scr_' + function + '_kv_name') }}"
+        prefix:                         "{{ lookup('vars', 'scr_' + function + '_prefix' ) }}"
+      when:
+        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']
+      tags:                             [secrets]
+
+    - name:                             "Destination - Get SSH credentials from Key Vault"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_keys
+      vars:
+        function:                       "dest"
+        granularity:                    "workload"
+        kv_name:                        "{{ lookup('vars', 'scr_' + function + '_kv_name') }}"
+        prefix:                         "{{ lookup('vars', 'scr_' + function + '_prefix' ) }}"
+      when:
+        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']
+      tags:                             [secrets]
+
+
+    # -----------------------------------------------------------------------
+    # Step 3 — Upload the initial log to Azure now that MSI is authenticated.
+    #          Subsequent uploads happen in post_tasks once all hosts finish.
+    # -----------------------------------------------------------------------
+    - name:                             "Azure - Upload initial log to storage account"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_upload
+      run_once:                         true
+      tags:                             [upload]
+
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |   TASKS                                                                    |
+# |     4. System discovery — runs in parallel across all hosts                |
+# |     5. Fetch per-host reports to controller + append to main log           |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
   tasks:
-    - name: Set workflow variables
-      set_fact:
-        actual_discovery_mode: "{{ discovery_mode | default(default_discovery_mode) }}"
-        actual_source_sid: "{{ scr_source_sid | default('') }}"
-        actual_target_sid: "{{ scr_target_sid | default('') }}"
-        scr_run_id: "{{ scr_run_id | default(ansible_date_time.iso8601) }}"
-    
-    # Build blob infrastructure variables upfront
-    - name: Initialize blob storage variables
-      set_fact:
-        scr_datastore_prefix: "scr"
-        scr_state_blob_name: "scr_state.json"
-        scr_blob_prefix: "scr/{{ scr_run_id }}/"
-        scr_blob_content_type: "application/json"
 
-    - name: Display workflow configuration
-      debug:
-        msg:
-          - "=== SCR DISCOVERY WORKFLOW ==="
-          - "Run ID: {{ scr_run_id }}"
-          - "Discovery Mode: {{ actual_discovery_mode }}"
-          - "Source SID: {{ actual_source_sid if actual_source_sid != '' else 'Auto-discover' }}"
-          - "Target SID: {{ actual_target_sid if actual_target_sid != '' else 'Auto-discover' }}"
-
-    # STEP 1: Discover source system
-    - name: Discover source system facts
-      include_role:
-        name: roles-scr/scr_system_discovery
+    # -----------------------------------------------------------------------
+    # Step 4 — Discovery runs on each host independently and in parallel.
+    #          Results are written to /tmp/scr_discovery_*.txt on each host.
+    #          ignore_errors ensures one host failing doesn't block the rest.
+    # -----------------------------------------------------------------------
+    - name:                             "Source - System Discovery"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_system_discovery
       vars:
-        scr_discovery_system_role: "source"
-        scr_discovery_sid: "{{ actual_source_sid }}"
-      when: actual_discovery_mode in ['source', 'both']
-      tags: scr_source_discovery
+        scr_discovery_system_role:      "source"
+        scr_discovery_sid:              "{{ scr_source_sid }}"
+      when:
+        - (scr_source_sid | upper + '_PAS') in vars['group_names'] or
+          (scr_source_sid | upper + '_DB')  in vars['group_names']
+      ignore_errors:                    true
+      register:                         _source_discovery_result
+      tags:                             [discovery]
 
-    - name: Store source discovery facts
-      set_fact:
-        source_discovery_facts: "{{ discovered_facts }}"
-      when: actual_discovery_mode in ['source', 'both'] and discovered_facts is defined
-
-    # STEP 2: Discover target system
-    - name: Discover target system facts
-      include_role:
-        name: roles-scr/scr_system_discovery
+    - name:                             "Destination - System Discovery"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_system_discovery
       vars:
-        scr_discovery_system_role: "target"
-        scr_discovery_sid: "{{ actual_target_sid }}"
-      when: actual_discovery_mode in ['target', 'both']
-      tags: scr_target_discovery
+        scr_discovery_system_role:      "target"
+        scr_discovery_sid:              "{{ scr_dest_sid }}"
+      when:
+        - (scr_dest_sid | upper + '_PAS') in vars['group_names'] or
+          (scr_dest_sid | upper + '_DB')  in vars['group_names']
+      ignore_errors:                    true
+      register:                         _dest_discovery_result
+      tags:                             [discovery]
 
-    - name: Store target discovery facts
-      set_fact:
-        target_discovery_facts: "{{ discovered_facts }}"
-      when: actual_discovery_mode in ['target', 'both'] and discovered_facts is defined
 
-    # STEP 3: Build complete SCR state JSON directly
-    - name: Build complete SCR state JSON
-      include_role:
-        name: roles-scr/scr_common
-        tasks_from: build_scr_state.yaml
+    # -----------------------------------------------------------------------
+    # Step 5a — Find and fetch discovery reports from each remote host.
+    #           Files land in scr_log_dir on the controller, named by host.
+    # -----------------------------------------------------------------------
+    - name:                             "Host - Find discovery report files in /tmp"
+      ansible.builtin.find:
+        paths:                          "/tmp"
+        patterns:                       "scr_discovery_*.txt"
+      register:                         _scr_discovery_reports
+      tags:                             [fetch]
+
+    - name:                             "Controller - Fetch each discovery report"
+      ansible.builtin.fetch:
+        src:                            "{{ item.path }}"
+        dest:                           "{{ scr_log_dir }}/scr_discovery_{{ inventory_hostname }}_{{ item.path | basename }}"
+        flat:                           true
+        fail_on_missing:                true
+      loop:                             "{{ _scr_discovery_reports.files }}"
+      when:                             _scr_discovery_reports.files | length > 0
+      tags:                             [fetch]
+
+    # -----------------------------------------------------------------------
+    # Step 5b — Append per-host discovery outcome to the main log.
+    #           Shows 'completed' or 'FAILED' so the log is self-describing.
+    # -----------------------------------------------------------------------
+    - name:                             "Controller - Append discovery result to log"
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line: >-
+          [{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 4 :
+          Discovery {{ 'FAILED' if ((_source_discovery_result is defined and _source_discovery_result is failed)
+                                 or (_dest_discovery_result   is defined and _dest_discovery_result   is failed))
+                       else 'completed' }} — {{ inventory_hostname }}
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      tags:                             [fetch]
+
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |   POST-TASKS                                                               |
+# |     Runs only after ALL hosts have completed their tasks section.          |
+# |     5. Upload log + all discovery reports to Azure in one operation        |
+# |     6. Remove temp SSH key files from controller                           |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+  post_tasks:
+
+    # -----------------------------------------------------------------------
+    # Step 5 final — All hosts done; all reports are on the controller.
+    #               Upload everything to Azure in a single pass.
+    # -----------------------------------------------------------------------
+    - name:                             "Azure - Upload all logs and discovery reports"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_upload
+      run_once:                         true
+      tags:                             [fetch, upload]
+
+    # -----------------------------------------------------------------------
+    # Step 6 — Remove the temp SSH key files that scr_keys wrote to /tmp.
+    # -----------------------------------------------------------------------
+    - name:                             "Source - Cleanup SSH credential files"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_keys
       vars:
-        source_facts: "{{ source_discovery_facts | default({}) }}"
-        target_facts: "{{ target_discovery_facts | default({}) }}"
-      tags: scr_build
+        cleanup:                        true
+        function:                       "source"
+      when:
+        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']
+      tags:                             [cleanup]
 
-    # STEP 4: Add step markers dynamically
-    - name: Mark initiate_logging as completed
-      include_role:
-        name: roles-scr/scr_common
-        tasks_from: add_step_marker.yaml
+    - name:                             "Destination - Cleanup SSH credential files"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_keys
       vars:
-        scr_step_name: "initiate_logging"
-        scr_step_status: "completed"
-      tags: scr_telemetry
+        cleanup:                        true
+        function:                       "dest"
+      when:
+        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']
+      tags:                             [cleanup]
 
-    - name: Mark collect_facts as completed
-      include_role:
-        name: roles-scr/scr_common
-        tasks_from: add_step_marker.yaml
-      vars:
-        scr_step_name: "collect_facts"
-        scr_step_status: "completed"
-      tags: scr_telemetry
-
-    # STEP 5: Publish to Azure (single operation)
-    - name: Publish SCR state to Azure
-      include_role:
-        name: roles-scr/scr_common
-        tasks_from: publish_scr_state.yaml
-      tags: scr_publish
-
-    - name: Display completion summary
-      debug:
-        msg:
-          - "=== SCR WORKFLOW COMPLETE ==="
-          - "Run ID: {{ scr_run_id }}"
-          - "Blob Path: {{ scr_blob_prefix }}{{ scr_state_blob_name }}"
-          - "Published to Azure Storage successfully"

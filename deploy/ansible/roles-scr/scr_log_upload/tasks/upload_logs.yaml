@@ -1,0 +1,48 @@
+---
+# scr_log_upload/tasks/upload_logs.yaml
+#
+# Uploads a single log file to Azure Blob Storage using MSI (managed identity).
+# Called in a loop from main.yaml via include_tasks.
+#
+# Expected loop vars:
+#   scr_log_file_path  - absolute path to the log file on the controller
+#   scr_log_file_name  - basename of the log file (used as the blob name suffix)
+
+- name:                                 "SCR Log Upload - Stat: {{ scr_log_file_name }}"
+  ansible.builtin.stat:
+    path:                               "{{ scr_log_file_path }}"
+  register:                             _scr_log_file_stat
+  delegate_to:                          localhost
+
+
+- name:                                 "SCR Log Upload - Upload to Azure (MSI CLI): {{ scr_log_file_name }}"
+  ansible.builtin.command:
+    cmd: >-
+      az storage blob upload
+      --account-name {{ scr_azure_storage_account }}
+      --container-name {{ scr_azure_container }}
+      --name {{ scr_log_upload_blob_prefix }}{{ scr_log_file_name }}
+      --file {{ scr_log_file_path }}
+      --overwrite
+      --auth-mode login
+  when:                                 _scr_log_file_stat.stat.exists
+  delegate_to:                          localhost
+  register:                             _log_upload_result
+  changed_when:                         _log_upload_result.rc == 0
+
+
+# Result summary --------------------------------------------------
+- name:                                 "SCR Log Upload - Result: {{ scr_log_file_name }}"
+  ansible.builtin.debug:
+    msg:
+      - "Log file uploaded: {{ scr_log_file_name }}"
+      - "Blob path:         {{ scr_log_upload_blob_prefix }}{{ scr_log_file_name }}"
+      - "Container:         {{ scr_azure_container }}"
+      - "Storage account:   {{ scr_azure_storage_account }}"
+  when:                                 _scr_log_file_stat.stat.exists
+
+
+- name:                                 "SCR Log Upload - File not found, skipping: {{ scr_log_file_name }}"
+  ansible.builtin.debug:
+    msg:                                "Log file {{ scr_log_file_path }} no longer exists. Skipping upload."
+  when:                                 not _scr_log_file_stat.stat.exists
