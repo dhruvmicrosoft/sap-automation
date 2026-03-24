@@ -2,7 +2,7 @@
 # Discover storage configuration for SAP systems
 
 - name: Get filesystem information
-  shell: |
+  ansible.builtin.shell: |
     echo "=== FILESYSTEM USAGE ==="
     df -h | grep -E "(sap|hana|oracle|db2|usr)" || df -h
     echo "=== MOUNT POINTS ==="
@@ -11,13 +11,13 @@
   ignore_errors: true
 
 - name: Get SAP-specific directories and sizes
-  shell: |
+  ansible.builtin.shell: |
     echo "=== SAP DIRECTORY SIZES ==="
     if [ -d "/usr/sap" ]; then
       du -sh /usr/sap/* 2>/dev/null | head -10
     fi
     if [ -d "/hana" ]; then
-      du -sh /hana/* 2>/dev/null | head -10  
+      du -sh /hana/* 2>/dev/null | head -10
     fi
     echo "=== SAP MOUNT POINTS ==="
     mount | grep -E "/usr/sap|/hana|/oracle|/db2" | head -10
@@ -25,7 +25,7 @@
   ignore_errors: true
 
 - name: Get disk device information
-  shell: |
+  ansible.builtin.shell: |
     echo "=== BLOCK DEVICES ==="
     lsblk | head -20
     echo "=== DISK USAGE DETAILS ==="
@@ -34,7 +34,7 @@
   ignore_errors: true
 
 - name: Check for LVM and RAID
-  shell: |
+  ansible.builtin.shell: |
     echo "=== LVM INFORMATION ==="
     if command -v lvs >/dev/null 2>&1; then
       lvs 2>/dev/null | head -10 || echo "No LVM volumes"
@@ -45,7 +45,7 @@
   ignore_errors: true
 
 - name: Set storage facts
-  set_fact:
+  ansible.builtin.set_fact:
     discovered_storage_facts:
       total_disk_gb: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | default(0) // (1024*1024*1024) }}"
       sap_filesystems: "{{ filesystem_info.stdout_lines | select('match', '.*sap.*') | list }}"

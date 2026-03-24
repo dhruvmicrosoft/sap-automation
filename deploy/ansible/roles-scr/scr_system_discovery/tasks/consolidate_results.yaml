@@ -2,7 +2,7 @@
 # Consolidate all discovery results and update SCR state
 
 - name: Consolidate all discovered facts
-  set_fact:
+  ansible.builtin.set_fact:
     discovered_facts:
       system_role: "{{ scr_discovery_system_role }}"
       discovery_timestamp: "{{ ansible_date_time.iso8601 }}"
@@ -21,32 +21,32 @@
         app_server_count: "{{ discovered_topology_facts.app_server_count | default(0) }}"
 
 - name: Create detailed discovery report
-  copy:
+  ansible.builtin.copy:
     content: |
       # SAP System Discovery Report
       Generated: {{ ansible_date_time.iso8601 }}
       System Role: {{ scr_discovery_system_role | upper }}
       Discovered by: {{ ansible_user | default('ansible') }}@{{ ansible_hostname }}
-      
+
       ## System Summary
       - SID: {{ discovered_facts.sap.sid }}
-      - Database Type: {{ discovered_facts.db.type }}  
+      - Database Type: {{ discovered_facts.db.type }}
       - Architecture: {{ discovered_facts.topology.architecture }}
       - OS: {{ discovered_facts.os.distribution }} {{ discovered_facts.os.version }}
       - Kernel: {{ discovered_facts.os.kernel }}
-      
-      ## SAP Components  
+
+      ## SAP Components
       - SAP Kernel: {{ discovered_facts.sap.kernel }}
       - SCS Instance: {{ discovered_facts.topology.scs_instance }}
       - SCS Host: {{ discovered_facts.topology.scs_host }}
       - App Servers: {{ discovered_facts.topology.app_server_count }}
       - Instance Numbers: {{ discovered_facts.topology.instance_numbers | join(', ') }}
-      
+
       ## Database Details
       - DB Type: {{ discovered_facts.db.type }}
       - DB Version: {{ discovered_facts.db.version }}
       - DB Running: {{ discovered_facts.db.processes_running }}
-      
+
       ## Infrastructure
       - Hostname: {{ discovered_facts.os.hostname }}
       - FQDN: {{ discovered_facts.os.fqdn }}
@@ -55,32 +55,33 @@
       - Memory (MB): {{ discovered_facts.os.memory_mb }}
       - Total Disk (GB): {{ discovered_facts.storage.total_disk_gb }}
       - Virtualized: {{ discovered_facts.os.virtualization }}
-      
+
       ## Network Configuration
       - Interfaces: {{ discovered_facts.network.interfaces | join(', ') }}
       - Gateway: {{ discovered_facts.network.gateway }}
       - DNS Servers: {{ discovered_facts.network.nameservers | join(', ') }}
       - SAP Ports Open: {{ discovered_facts.network.sap_ports_open }}
-      
+
       ## Storage Configuration
       - LVM Configured: {{ discovered_facts.storage.lvm_configured }}
       - RAID Configured: {{ discovered_facts.storage.raid_configured }}
       - Free Space (GB): {{ discovered_facts.storage.free_space_gb }}
-      
+
       {% for filesystem in discovered_facts.storage.sap_filesystems %}
       - {{ filesystem }}
       {% endfor %}
-      
+
       ## Cluster Information
       - Cluster Configured: {{ discovered_facts.topology.cluster_configured }}
       - Virtual Hostname: {{ discovered_facts.topology.virtual_hostname }}
-    dest: "/tmp/scr_discovery_{{ scr_discovery_system_role }}_{{ discovered_facts.sap.sid | default('unknown') }}_{{ ansible_date_time.epoch }}.txt"
+    dest: "/tmp/scr_discovery_{{ scr_discovery_system_role }}_{{ discovered_facts.sap.sid | default('unknown') }}.txt"
+    mode: "0644"
   when: scr_discovery_output.create_inventory | default(true)
 
 - name: Update SCR state with discovered facts (if enabled)
   block:
     - name: Set facts for SCR state update
-      set_fact:
+      ansible.builtin.set_fact:
         scr_state_update:
           "{{ scr_discovery_system_role }}":
             sid: "{{ discovered_facts.sap.sid }}"
@@ -96,11 +97,11 @@
                 app_servers: "{{ discovered_facts.topology.app_servers }}"
                 app_server_count: "{{ discovered_facts.topology.app_server_count }}"
                 cluster_configured: "{{ discovered_facts.topology.cluster_configured }}"
-                
+
     - name: Log discovery completion
-      debug:
-        msg: 
+      ansible.builtin.debug:
+        msg:
           - "SCR {{ scr_discovery_system_role }} discovery completed successfully"
           - "Facts ready for SCR state update: {{ scr_state_update.keys() | list }}"
-  
+
   when: scr_discovery_output.update_scr_state | default(false)

@@ -4,7 +4,7 @@
 # Inputs:
 #   - function:     "source" or "dest" - indicates whether we are retrieving keys for source or target system
 #   - granularity:  Level keys are managed:
-#                   - "workload"  - one key for all VM's in the Workload Zone; 
+#                   - "workload"  - one key for all VM's in the Workload Zone;
 #                                   Key Vault secret name format: <prefix>-sid-sshkey,
 #                                                                 <prefix>-sid-username
 #                   - "sid"       - one key for all VM's that are part of the SID
@@ -25,17 +25,17 @@
 #     Example: hostvars[inventory_hostname]['ansible_ssh_private_key_file']
 #
 # Description:
-#   This role retrieves SSH credentials (username and private key) from Azure Key Vault for SAP source and/or target systems. 
-#     Secrets are resolved based on a configurable granularity level (workload, SID, or host), which determines the naming 
+#   This role retrieves SSH credentials (username and private key) from Azure Key Vault for SAP source and/or target systems.
+#     Secrets are resolved based on a configurable granularity level (workload, SID, or host), which determines the naming
 #     convention used in Key Vault.
-#   The role uses the Azure CLI to securely fetch the required secrets and exposes them as Ansible facts for use in 
+#   The role uses the Azure CLI to securely fetch the required secrets and exposes them as Ansible facts for use in
 #     subsequent SSH-based tasks. Built-in validation, retries, and error handling ensure reliable secret retrieval.
-#   To support complex scenarios, the role can manage credentials from up to two separate Key Vaults (source and target) 
-#     within a single execution. This is achieved by dynamically constructing variable names based on the provided `function` 
+#   To support complex scenarios, the role can manage credentials from up to two separate Key Vaults (source and target)
+#     within a single execution. This is achieved by dynamically constructing variable names based on the provided `function`
 #     parameter.
-#   An optional cleanup step removes any temporary files created during execution to ensure that sensitive data is not 
+#   An optional cleanup step removes any temporary files created during execution to ensure that sensitive data is not
 #     persisted on the system.
-#   The role is designed to be flexible and reusable across environments by supplying the appropriate variables 
+#   The role is designed to be flexible and reusable across environments by supplying the appropriate variables
 #     (`function`, `granularity`, `prefix`, `kv_name`).
 #
 # Notes:
@@ -69,15 +69,15 @@
 #       dynamically, allowing us to achieve the desired result.
 # +------------------------------------4--------------------------------------*/
 ---
-- name:
+- name:                                   "SCR Keys - Retrieve SSH credentials from Key Vault"
   ansible.builtin.include_tasks:
     file:                                 roles-scr/scr_keys/tasks/get_secrets.yaml
-  when:                                   cleanup is false
+  when:                                   not (cleanup | default(false) | bool)
 
-- name:
+- name:                                   "SCR Keys - Remove temporary SSH key files"
   ansible.builtin.include_tasks:
     file:                                 roles-scr/scr_keys/tasks/cleanup.yaml
-  when:                                   cleanup is true
+  when:                                   cleanup | default(false) | bool
 
 # /*---------------------------------------------------------------------------8
 # |                                   END                                      |

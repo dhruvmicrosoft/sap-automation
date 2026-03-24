@@ -2,10 +2,10 @@
 # Discover network configuration and connectivity
 
 - name: Get network interface details
-  shell: |
+  ansible.builtin.shell: |
     echo "=== NETWORK INTERFACES ==="
     ip addr show | grep -A 3 -B 1 "state UP"
-    echo "=== ROUTING TABLE ==="  
+    echo "=== ROUTING TABLE ==="
     ip route | head -10
     echo "=== DNS CONFIGURATION ==="
     cat /etc/resolv.conf 2>/dev/null | head -10
@@ -13,14 +13,14 @@
   ignore_errors: true
 
 - name: Check SAP-specific ports
-  shell: |
+  ansible.builtin.shell: |
     echo "=== SAP PORTS LISTENING ==="
     netstat -tlnp 2>/dev/null | grep -E "(3200|3300|3600|8000|5[0-9]{4})" | head -20
   register: sap_ports
   ignore_errors: true
 
 - name: Test connectivity to common SAP services
-  shell: |
+  ansible.builtin.shell: |
     echo "=== CONNECTIVITY TESTS ==="
     # Test if we can resolve our own hostname
     nslookup {{ ansible_hostname }} 2>/dev/null || echo "Hostname resolution failed"
@@ -32,7 +32,7 @@
   ignore_errors: true
 
 - name: Set network facts
-  set_fact:
+  ansible.builtin.set_fact:
     discovered_network_facts:
       interfaces: "{{ ansible_interfaces | default([]) }}"
       primary_ip: "{{ ansible_default_ipv4.address | default('Unknown') }}"

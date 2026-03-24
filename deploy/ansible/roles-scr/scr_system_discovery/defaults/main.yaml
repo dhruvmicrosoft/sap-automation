@@ -26,7 +26,7 @@ sap_discovery:
   get_profile_info: true
   check_users: true
 
-# Database discovery settings  
+# Database discovery settings
 db_discovery:
   check_version: true
   check_status: true
@@ -55,9 +55,9 @@ scr_discovery_timeouts:
 # Error handling
 scr_discovery_error_handling:
   continue_on_error: true
-  required_facts: 
+  required_facts:
     - "sap_sid"
-    - "os_info" 
+    - "os_info"
     - "sap_kernel"
   optional_facts:
     - "db_kernel"

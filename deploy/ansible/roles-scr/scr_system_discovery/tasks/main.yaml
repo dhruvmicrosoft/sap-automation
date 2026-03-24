@@ -3,74 +3,74 @@
 # This role comprehensively discovers SAP system facts for SCR operations
 
 - name: "Initialize {{ scr_discovery_system_role }} system discovery"
-  debug:
-    msg: 
+  ansible.builtin.debug:
+    msg:
       - "Starting SCR system discovery for {{ scr_discovery_system_role }} system"
       - "Target SID: {{ scr_discovery_sid }}"
       - "Discovery scope: {{ scr_discovery_scope.keys() | select() | list }}"
 
 - name: Validate discovery parameters
-  assert:
+  ansible.builtin.assert:
     that:
       - scr_discovery_system_role in ['source', 'target']
       - scr_discovery_sid is defined
     fail_msg: "Invalid discovery parameters. Check scr_discovery_system_role is set to 'source' or 'target'"
 
 - name: Display discovery info
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Discovery mode: {{ 'Auto-discovery' if scr_discovery_sid == '' else 'Target SID: ' + scr_discovery_sid }}"
 
 - name: Discover OS and system facts
-  include_tasks: discover_os_facts.yaml
+  ansible.builtin.include_tasks: discover_os_facts.yaml
   when: scr_discovery_scope.os_facts | default(true)
   tags:
     - scr_discovery
     - scr_os_facts
 
 - name: Discover SAP system facts
-  include_tasks: discover_sap_facts.yaml
+  ansible.builtin.include_tasks: discover_sap_facts.yaml
   when: scr_discovery_scope.sap_facts | default(true)
   tags:
-    - scr_discovery  
+    - scr_discovery
     - scr_sap_facts
 
 - name: Discover database facts
-  include_tasks: discover_db_facts.yaml
+  ansible.builtin.include_tasks: discover_db_facts.yaml
   when: scr_discovery_scope.db_facts | default(true)
   tags:
     - scr_discovery
     - scr_db_facts
 
 - name: Discover SAP topology
-  include_tasks: discover_topology.yaml
+  ansible.builtin.include_tasks: discover_topology.yaml
   when: scr_discovery_scope.topology | default(true)
   tags:
     - scr_discovery
     - scr_topology
 
 - name: Discover network configuration
-  include_tasks: discover_network.yaml
+  ansible.builtin.include_tasks: discover_network.yaml
   when: scr_discovery_scope.networking | default(true)
   tags:
     - scr_discovery
     - scr_network
 
 - name: Discover storage configuration
-  include_tasks: discover_storage.yaml
+  ansible.builtin.include_tasks: discover_storage.yaml
   when: scr_discovery_scope.storage | default(true)
   tags:
     - scr_discovery
     - scr_storage
 
 - name: Consolidate and output discovery results
-  include_tasks: consolidate_results.yaml
+  ansible.builtin.include_tasks: consolidate_results.yaml
   tags:
     - scr_discovery
     - scr_results
 
 - name: "Display {{ scr_discovery_system_role }} system discovery summary"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "=== SCR {{ scr_discovery_system_role | upper }} SYSTEM DISCOVERY COMPLETE ==="
       - "SID: {{ discovered_facts.sap.sid | default('Unknown') }}"

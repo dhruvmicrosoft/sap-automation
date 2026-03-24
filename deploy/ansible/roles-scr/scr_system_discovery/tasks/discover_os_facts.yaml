@@ -2,13 +2,13 @@
 # Discover comprehensive OS and system facts
 
 - name: Gather comprehensive system facts
-  setup:
+  ansible.builtin.setup:
     gather_subset:
       - "all"
   register: system_facts
 
 - name: Get detailed OS information
-  shell: |
+  ansible.builtin.shell: |
     echo "=== OS RELEASE ==="
     cat /etc/os-release || echo "os-release not found"
     echo "=== KERNEL ==="
@@ -25,7 +25,7 @@
   ignore_errors: true
 
 - name: Check if system is virtualized
-  shell: |
+  ansible.builtin.shell: |
     if command -v systemd-detect-virt >/dev/null 2>&1; then
       systemd-detect-virt
     elif [ -f /proc/cpuinfo ]; then
@@ -37,17 +37,17 @@
   ignore_errors: true
 
 - name: Get timezone information
-  shell: timedatectl status 2>/dev/null || date
+  ansible.builtin.shell: timedatectl status 2>/dev/null || date
   register: timezone_info
   ignore_errors: true
 
-- name: Check systemd services status
-  shell: systemctl list-units --state=running --type=service --no-pager | head -50
+- name: Check systemd services status  # noqa: command-instead-of-module
+  ansible.builtin.shell: systemctl list-units --state=running --type=service --no-pager | head -50
   register: running_services
   ignore_errors: true
 
 - name: Set consolidated OS facts
-  set_fact:
+  ansible.builtin.set_fact:
     discovered_os_facts:
       distribution: "{{ ansible_distribution | default('Unknown') }}"
       version: "{{ ansible_distribution_version | default('Unknown') }}"
@@ -65,6 +65,6 @@
       python_version: "{{ ansible_python_version | default('unknown') }}"
 
 - name: Debug OS discovery results
-  debug:
+  ansible.builtin.debug:
     var: discovered_os_facts
   when: ansible_verbosity >= 1

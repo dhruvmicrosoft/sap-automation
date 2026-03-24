@@ -38,6 +38,7 @@
   name:                                 "SCR Initialize"
   gather_facts:                         false
   any_errors_fatal:                     false    # a discovery failure on one host must not stop all others
+  strategy:                             linear   # required: makes run_once behaviour deterministic
 
   # scr_source_sid and scr_dest_sid MUST be passed via --extra-vars at runtime.
   # They are resolved before hosts: is evaluated, which is why they cannot come
@@ -45,7 +46,6 @@
 
   vars_files:
     - roles-scr/scr_common/defaults/main.yaml    # loads scr_log_dir, scr_azure_*, etc.
-
 
 
 # /*---------------------------------------------------------------------------8
@@ -61,13 +61,13 @@
     # -----------------------------------------------------------------------
     # Step 1 — Gather controller datetime, create log dir, write initial log.
     # -----------------------------------------------------------------------
-    - name:                             "Controller - Gather facts for timestamps"
+    - name:                             "Controller - Gather facts for timestamps"  # noqa: run-once[task]
       ansible.builtin.setup:
       delegate_to:                      localhost
       run_once:                         true
       tags:                             [logging, always]
 
-    - name:                             "Controller - Set run-scoped blob prefix"
+    - name:                             "Controller - Set run-scoped blob prefix"  # noqa: run-once[task]
       ansible.builtin.set_fact:
         scr_run_id:                     "{{ ansible_date_time.iso8601 }}"
         scr_blob_prefix:                "scr/{{ ansible_date_time.iso8601 }}/"
@@ -75,7 +75,7 @@
       run_once:                         true
       tags:                             [logging, always]
 
-    - name:                             "Controller - Create SCR log directory"
+    - name:                             "Controller - Create SCR log directory"  # noqa: run-once[task]
       ansible.builtin.file:
         path:                           "{{ scr_log_dir }}"
         state:                          directory
@@ -84,9 +84,10 @@
       run_once:                         true
       tags:                             [logging]
 
-    - name:                             "Controller - Write initial log entry"
+    - name:                             "Controller - Write initial log entry"  # noqa: run-once[task]
       ansible.builtin.copy:
         dest:                           "{{ scr_log_dir }}/scr_initialize.log"
+        mode:                           "0644"
         content: |
           ============================================================
           SCR INITIALIZE — RUN STARTED
@@ -99,7 +100,8 @@
 
           [{{ ansible_date_time.iso8601 }}] STEP 1 : Logging initialized
           [{{ ansible_date_time.iso8601 }}] STEP 2 : Retrieving Key Vault secrets
-          [{{ ansible_date_time.iso8601 }}] STEP 3 : Uploading initial log to Azure Blob Storage
+          [{{ ansible_date_time.iso8601 }}] STEP 3 : Purging stale discovery reports
+          [{{ ansible_date_time.iso8601 }}] STEP 4 : Uploading initial log to Azure Blob Storage
       delegate_to:                      localhost
       run_once:                         true
       tags:                             [logging]
@@ -138,15 +140,26 @@
 
 
     # -----------------------------------------------------------------------
-    # Step 3 — Upload the initial log to Azure now that MSI is authenticated.
+    # Step 3 — Purge any stale discovery reports from the controller log dir
+    #          left over from previous runs. Must happen before the upload so
+    #          old epoch-named files don't get pushed to Azure again.
+    # -----------------------------------------------------------------------
+    - name:                             "Controller - Purge stale discovery reports from log dir"  # noqa: run-once[task]
+      ansible.builtin.shell:            "rm -f {{ scr_log_dir }}/scr_discovery_*.txt {{ scr_log_dir }}/scr_discovery_*.md"
+      delegate_to:                      localhost
+      run_once:                         true
+      changed_when:                     false
+      tags:                             [logging, upload]
+
+    # -----------------------------------------------------------------------
+    # Step 4 — Upload the initial log to Azure now that MSI is authenticated.
     #          Subsequent uploads happen in post_tasks once all hosts finish.
     # -----------------------------------------------------------------------
-    - name:                             "Azure - Upload initial log to storage account"
+    - name:                             "Azure - Upload initial log to storage account"  # noqa: run-once[task]
       ansible.builtin.include_role:
         name:                           roles-scr/scr_log_upload
       run_once:                         true
       tags:                             [upload]
-
 
 
 # /*---------------------------------------------------------------------------8
@@ -159,9 +172,19 @@
   tasks:
 
     # -----------------------------------------------------------------------
-    # Step 4 — Discovery runs on each host independently and in parallel.
-    #          Results are written to /tmp/scr_discovery_*.txt on each host.
-    #          ignore_errors ensures one host failing doesn't block the rest.
+    # Step 4a — Remove old discovery reports from each remote host's /tmp/.
+    #           Previous runs leave epoch-named files behind; if not removed
+    #           they get picked up by the find task and uploaded again.
+    # -----------------------------------------------------------------------
+    - name:                             "Host - Remove stale discovery reports from /tmp"
+      ansible.builtin.shell:            "rm -f /tmp/scr_discovery_*.txt /tmp/scr_discovery_*.md"
+      changed_when:                     false
+      tags:                             [discovery, fetch]
+
+    # -----------------------------------------------------------------------
+    # Step 4b — Discovery runs on each host independently and in parallel.
+    #           Results are written to /tmp/scr_discovery_*.txt on each host.
+    #           ignore_errors ensures one host failing doesn't block the rest.
     # -----------------------------------------------------------------------
     - name:                             "Source - System Discovery"
       ansible.builtin.include_role:
@@ -191,7 +214,7 @@
 
 
     # -----------------------------------------------------------------------
-    # Step 5a — Find and fetch discovery reports from each remote host.
+    # Step 5b — Find and fetch discovery reports from each remote host.
     #           Files land in scr_log_dir on the controller, named by host.
     # -----------------------------------------------------------------------
     - name:                             "Host - Find discovery report files in /tmp"
@@ -212,7 +235,7 @@
       tags:                             [fetch]
 
     # -----------------------------------------------------------------------
-    # Step 5b — Append per-host discovery outcome to the main log.
+    # Step 5c — Append per-host discovery outcome to the main log.
     #           Shows 'completed' or 'FAILED' so the log is self-describing.
     # -----------------------------------------------------------------------
     - name:                             "Controller - Append discovery result to log"
@@ -226,7 +249,6 @@
         insertafter:                    EOF
       delegate_to:                      localhost
       tags:                             [fetch]
-
 
 
 # /*---------------------------------------------------------------------------8
@@ -243,7 +265,7 @@
     # Step 5 final — All hosts done; all reports are on the controller.
     #               Upload everything to Azure in a single pass.
     # -----------------------------------------------------------------------
-    - name:                             "Azure - Upload all logs and discovery reports"
+    - name:                             "Azure - Upload all logs and discovery reports"  # noqa: run-once[task]
       ansible.builtin.include_role:
         name:                           roles-scr/scr_log_upload
       run_once:                         true
@@ -273,4 +295,3 @@
         - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
           (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']
       tags:                             [cleanup]
-

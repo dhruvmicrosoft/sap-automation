@@ -2,7 +2,7 @@
 # Discover SAP system topology - SCS, app servers, database servers, etc.
 
 - name: Get SAP instance information from sapservices
-  shell: |
+  ansible.builtin.shell: |
     if [ -f "/usr/sap/sapservices" ]; then
       cat /usr/sap/sapservices
     else
@@ -12,7 +12,7 @@
   ignore_errors: true
 
 - name: Check for SCS/ASCS instance
-  shell: |
+  ansible.builtin.shell: |
     # Check for SCS processes
     ps aux | grep -E "(enserver|msgserver)" | grep -v grep
     # Check for SCS directories
@@ -22,24 +22,24 @@
   when: working_sid | length > 0
 
 - name: Check for application server instances
-  shell: |
+  ansible.builtin.shell: |
     # Check for app server processes
     ps aux | grep -E "(disp\+work|gwrd)" | grep -v grep
-    # Check for app server directories  
+    # Check for app server directories
     ls -la /usr/sap/{{ working_sid }}/ 2>/dev/null | grep -E "D[0-9]{2}" || echo "No app server directories found"
   register: app_server_info
   ignore_errors: true
   when: working_sid | length > 0
 
 - name: Get instance numbers from processes
-  shell: |
+  ansible.builtin.shell: |
     # Extract instance numbers from running processes
     ps aux | grep -E "(sapstart|gwrd|disp\+work)" | grep -v grep | sed -n 's/.*pf=.*_\([0-9][0-9]\)_.*/\1/p' | sort -u
   register: instance_numbers
   ignore_errors: true
 
 - name: Check sapcontrol for instance status (if available)
-  shell: |
+  ansible.builtin.shell: |
     if command -v sapcontrol >/dev/null 2>&1; then
       for instance_nr in {{ instance_numbers.stdout_lines | join(' ') }}; do
         echo "=== Instance $instance_nr ==="
@@ -53,7 +53,7 @@
   when: instance_numbers.stdout_lines | length > 0
 
 - name: Get hostname and network info
-  shell: |
+  ansible.builtin.shell: |
     echo "=== HOSTNAME INFO ==="
     hostname -f 2>/dev/null || hostname
     echo "=== NETWORK INTERFACES ==="
@@ -64,7 +64,7 @@
   ignore_errors: true
 
 - name: Parse SCS instance information
-  set_fact:
+  ansible.builtin.set_fact:
     scs_instance: >-
       {%- set scs_match = scs_info.stdout | regex_search('(ASCS|SCS)([0-9]{2})', '\\1', '\\2') -%}
       {%- if scs_match -%}
@@ -75,24 +75,24 @@
   when: scs_info.stdout is defined
 
 - name: Set default SCS instance if not found
-  set_fact:
+  ansible.builtin.set_fact:
     scs_instance: "Unknown"
   when: scs_instance is not defined
 
-- name: Parse application server instances  
-  set_fact:
+- name: Parse application server instances
+  ansible.builtin.set_fact:
     app_server_instances: >-
       {%- set app_matches = app_server_info.stdout_lines | select('match', '.*D[0-9]{2}.*') | list -%}
       {{ app_matches | map('regex_replace', '.*D([0-9]{2}).*', 'D\\1') | list | unique }}
   when: app_server_info.stdout_lines is defined
 
 - name: Set default app server instances if not found
-  set_fact:
+  ansible.builtin.set_fact:
     app_server_instances: []
   when: app_server_instances is not defined
 
 - name: Determine system architecture
-  set_fact:
+  ansible.builtin.set_fact:
     system_architecture: >-
       {%- if scs_instance != 'Unknown' and app_server_instances | length > 0 -%}
       distributed
@@ -102,14 +102,14 @@
       unknown
       {%- endif -%}
 
-- name: Get load balancer/virtual IP information  
-  shell: |
+- name: Get load balancer/virtual IP information
+  ansible.builtin.shell: |
     # Check for virtual IPs or load balancer config
     ip addr show | grep -E "(virtual|vip)" || echo "No virtual IPs found"
     # Check cluster resources if available
     if command -v crm >/dev/null 2>&1; then
       crm status 2>/dev/null | head -20 || echo "Cluster not configured"
-    elif command -v pcs >/dev/null 2>&1; then  
+    elif command -v pcs >/dev/null 2>&1; then
       pcs status 2>/dev/null | head -20 || echo "Pacemaker not configured"
     else
       echo "No cluster tools found"
@@ -118,7 +118,7 @@
   ignore_errors: true
 
 - name: Set consolidated topology facts
-  set_fact:
+  ansible.builtin.set_fact:
     discovered_topology_facts:
       architecture: "{{ system_architecture | default('unknown') }}"
       scs_instance: "{{ scs_instance | default('Unknown') }}"
@@ -131,6 +131,6 @@
       virtual_hostname: "{{ network_topology.stdout | regex_search('vip[\\w.-]+') | default('None') }}"
 
 - name: Debug topology discovery results
-  debug:
+  ansible.builtin.debug:
     var: discovered_topology_facts
   when: ansible_verbosity >= 1
