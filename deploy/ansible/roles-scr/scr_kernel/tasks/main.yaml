@@ -1,0 +1,48 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# -------------------------------------+---------------------------------------8
+# inventory
+#   sapsid = SID
+#   Kernel = SAP or DB (HANA, Oracle, etc.)
+# compare
+# archive
+# store
+# retrieve
+# extract
+# cleanup
+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Inventory SAP Kernel for SID"
+  ansible.builtin.include_tasks:
+    file:                               roles-scr/scr_kernel/tasks/inventory-sap.yaml
+  when:
+        - function  is defined
+        - kernel    is defined
+        - function  == "inventory"
+        - kernel    == "sap"
+        - (sapsid | upper + '_PAS') in vars['group_names']
+
+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Inventory DB Kernel for SID"
+  ansible.builtin.include_tasks:
+    file:                               roles-scr/scr_kernel/tasks/inventory-db.yaml
+  when:
+        - function  is defined
+        - kernel    is defined
+        - function  == "inventory"
+        - kernel    == "db"
+        - (sapsid | upper + '_DB') in vars['group_names']
+
+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Compare SAP Kernel for SID"
+  ansible.builtin.include_tasks:
+    file:                               roles-scr/scr_kernel/tasks/compare-sap.yaml
+  when:
+        - function  is defined
+        - kernel    is defined
+        - function  == "compare"
+        - kernel    == "sap"
+
+
+...
