@@ -14,13 +14,13 @@
 
 
 scr_source_sid:                         "X90"
-scr_source_prefix:                      "MKDS1-EUS2-SAP00"
-scr_source_kv_name:                     "MKDS1EUS2SAP00user54B"
+scr_source_prefix:                      "MKDSE-SECE-SAP00"
+scr_source_kv_name:                     "mkdsesecesap00user2f8"
 # scr_source_ssh_username:                "azureadm"
 # scr_source_ssh_private_key_file:        "/tmp/ansible_kv_key_{{ inventory_hostname }}"
-
+  
 scr_dest_sid:                           "X91"
-scr_dest_prefix:                        "MKDS1-EUS2-SAP00"
-scr_dest_kv_name:                       "MKDS1EUS2SAP00user54B"
+scr_dest_prefix:                        "MKDSE-SECE-SAP00"
+scr_dest_kv_name:                       "MKDSESECESAP00user2f8"
 # scr_dest_ssh_username:                  "azureadm"
 # scr_dest_ssh_private_key_file:          "/tmp/ansible_kv_key_{{ inventory_hostname }}"
