@@ -10,7 +10,7 @@
 # archive
 # store
 # retrieve
-# extract
+# extract and process deltas (remove from target)
 # cleanup
 
 - name:                                 "SCR Kernel: ({{ function | upper }}) Inventory SAP Kernel for SID"
