@@ -1,15 +1,15 @@
 X91_DB:
   hosts:
-    x91dhdb00l037:
-      ansible_host        : 10.111.96.8
+    x91dhdb00l0f2:
+      ansible_host        : 10.111.1.7
       ansible_user        : azureadm
       ansible_connection  : ssh
       connection_type     : key
-      virtual_host        : x91dhdb00l037
+      virtual_host        : x91dhdb00l0f2
       become_user         : root
       os_type             : linux
-      vm_name             : MKDS1-EUS2-SAP00-X91_x91dhdb_z3_00l0379
-      resource_group_name : MKDS1-EUS2-SAP00-X91
+      vm_name             : MKDSE-SECE-SAP00-X91_x91dhdb_z3_00l0f2a
+      resource_group_name : MKDSE-SECE-SAP00-X91
       subscription_id     : 02993e58-2910-4b39-910c-aeccd207abf7
       use_nvme_disks      : false
 
@@ -19,16 +19,16 @@ X91_DB:
 
 X91_SCS:
   hosts:
-    x91scs00l379:
-      ansible_host        : 10.111.32.14
+    x91scs00lf2a:
+      ansible_host        : 10.111.1.81
       ansible_user        : azureadm
       ansible_connection  : ssh
       connection_type     : key
-      virtual_host        : x91scs00l379
+      virtual_host        : x91scs00lf2a
       become_user         : root
       os_type             : linux
-      vm_name             : MKDS1-EUS2-SAP00-X91_x91scs_z3_00l379
-      resource_group_name : MKDS1-EUS2-SAP00-X91
+      vm_name             : MKDSE-SECE-SAP00-X91_x91scs_z3_00lf2a
+      resource_group_name : MKDSE-SECE-SAP00-X91
       subscription_id     : 02993e58-2910-4b39-910c-aeccd207abf7
       use_nvme_disks      : false
 
@@ -44,16 +44,16 @@ X91_ERS:
 
 X91_PAS:
   hosts:
-    x91app00l379:
-      ansible_host        : 10.111.32.17
+    x91app00lf2a:
+      ansible_host        : 10.111.1.80
       ansible_user        : azureadm
       ansible_connection  : ssh
       connection_type     : key
-      virtual_host        : x91app00l379
+      virtual_host        : x91app00lf2a
       become_user         : root
       os_type             : linux
-      vm_name             : MKDS1-EUS2-SAP00-X91_x91app_z3_00l379
-      resource_group_name : MKDS1-EUS2-SAP00-X91
+      vm_name             : MKDSE-SECE-SAP00-X91_x91app_z3_00lf2a
+      resource_group_name : MKDSE-SECE-SAP00-X91
       subscription_id     : 02993e58-2910-4b39-910c-aeccd207abf7
       use_nvme_disks      : false
 
