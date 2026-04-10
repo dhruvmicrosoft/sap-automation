@@ -42,7 +42,7 @@
     scr_extra_on_target:                "{{ _target_map.keys() | difference(_source_map.keys()) }}"
     scr_missing_on_target:              "{{ _source_map.keys() | difference(_target_map.keys()) }}"
   tags:
-    - silent_task_v1
+    - silent_v1
 
 
 # /*---------------------------------------------------------------------------8
@@ -62,7 +62,7 @@
     label:                              "{{ item }}"
   # no_log:                               true
   tags:
-    - silent_task_v1
+    - silent_v1
 
 
 - name:                                 "Compare: List - Matching files"
@@ -96,7 +96,7 @@
         + (hostvars['localhost']['scr_extra_on_target']   | map('regex_replace', '^(.*)$', 'REMOVE_FROM_TARGET......  \1') | list)
       }}
   tags:
-    - silent_task_v1
+    - silent_v1
 
 
 - name:                                 "Compare: Sync Report"
