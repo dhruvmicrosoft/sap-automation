@@ -7,6 +7,45 @@ from ansible.plugins.callback.default import (
 # Reuse default callback's documentation so get_option() works
 DOCUMENTATION = DEFAULT_DOCUMENTATION
 
+#
+# Silent Output Control Tags
+#
+#   silent_task_v[N]
+#
+# Example:
+#
+#   tags:
+#     - silent_task_v1
+#
+# The use of a silent tag suppresses normal task output up to and including
+# the verbosity level specified in the tag. To render the default Ansible
+# output, the verbosity level must be set at least one level higher than
+# the silent tag.
+#
+# For example:
+#   silent_task_v1 requires a verbosity of 2 (-vv) or higher to display
+#   the normal task output.
+#
+# Loop Behavior:
+#
+# When applied to a task that includes a loop, the loop detail level is
+# automatically set to task_level + 1.
+#
+# Verbosity interaction (e.g. silent_task_v1):
+#
+#   verbosity <= 1 (task level):
+#       loop summary is displayed (ok/changed/skipped counts)
+#
+#   verbosity == 2 (task level + 1):
+#       per-item loop status headers are displayed
+#
+#   verbosity >= 3 (above loop level):
+#       full default Ansible output is displayed
+#
+
+
+
+
 class CallbackModule(DefaultCallback):
     CALLBACK_VERSION = 2.0
     CALLBACK_TYPE = 'stdout'
@@ -17,38 +56,36 @@ class CallbackModule(DefaultCallback):
     def __init__(self):
         super().__init__()
         self._loop_summary = {}
-        self._silent_task_tags = {
-            "silent_task_v0": 0,
-            "silent_task_v1": 1,
-            "silent_task_v2": 2,
-            "silent_task_v3": 3,
-            }
-        self._silent_loop_tags = {
-            "silent_loop_v0": 0,
-            "silent_loop_v1": 1,
-            "silent_loop_v2": 2,
-            "silent_loop_v3": 3,
-            }
+        self._silent_task_prefix = "silent_task_v"
 
 
     # ----------------------------------+---------------------------------------
-    def _display_ok_header_only(self, result, changed: bool = False):
+    @staticmethod
+    def _verbosity_hint(level):
+        """Return a -v string for the given verbosity level (e.g. 2 -> '-vv')."""
+        return '-' + 'v' * level if level > 0 else '(default)'
+
+
+    # ----------------------------------+---------------------------------------
+    def _display_ok_header_only(self, result, changed: bool = False, required_verbosity: int = 1):
         # Use the same host labeling as default (includes delegation like "x -> localhost")
         host_label = self.host_label(result)
 
-        # Mimic default coloring
-        # (Default uses COLOR_OK for ok and COLOR_CHANGED for changed) 【1-7573b8】
-        msg = ("changed: [%s] => [%s]" if changed else "ok: [%s] => [%s]") % (host_label, "Output suppressed by silent tag, increase verbosity to see details")
+        hint = self._verbosity_hint(required_verbosity)
+        suppressed = f"Output suppressed by silent tag, use {hint} to see details"
+        msg = ("changed: [%s] => [%s]" if changed else "ok: [%s] => [%s]") % (host_label, suppressed)
         color = C.COLOR_CHANGED if changed else C.COLOR_OK
 
         self._display.display(msg, color=color)
 
 
     # ----------------------------------+---------------------------------------
-    def _display_item_ok_header_only(self, result, changed: bool = False):
+    def _display_item_ok_header_only(self, result, changed: bool = False, required_verbosity: int = 1):
         host_label = self.host_label(result)
         status = "changed" if changed else "ok"
         color = C.COLOR_CHANGED if changed else C.COLOR_OK
+
+        hint = self._verbosity_hint(required_verbosity)
 
         # Default callback uses _get_item_label() for "(item=...)" formatting
         try:
@@ -57,15 +94,21 @@ class CallbackModule(DefaultCallback):
             item_label = result._result.get("item", None)
 
         if item_label is None:
-            self._display.display(f"{status}: [{host_label}] =>", color=color)
+            self._display.display(f"{status}: [{host_label}] => use {hint} to see details", color=color)
         else:
-            self._display.display(f"{status}: [{host_label}] => (item={item_label}) =>", color=color)
+            self._display.display(f"{status}: [{host_label}] => (item={item_label}) => use {hint} to see details", color=color)
 
 
     # ----------------------------------+---------------------------------------
-    def _silent_level(self, tags, tag_map):
-        """Return the min verbosity threshold from matching silent tags, or -1 if none match."""
-        levels = [level for tag, level in tag_map.items() if tag in tags]
+    def _silent_level(self, tags):
+        """Return the min verbosity threshold from matching silent_task_v tags, or -1 if none match."""
+        levels = []
+        for tag in tags:
+            if tag.startswith(self._silent_task_prefix):
+                try:
+                    levels.append(int(tag[len(self._silent_task_prefix):]))
+                except ValueError:
+                    pass
         return min(levels) if levels else -1
 
 
@@ -86,7 +129,7 @@ class CallbackModule(DefaultCallback):
 
         tags = set(getattr(result._task, "tags", []) or [])
         verbosity = getattr(self._display, "verbosity", 0)
-        required_task_level = self._silent_level(tags, self._silent_task_tags)  # Find which silent tags apply (if any)
+        required_task_level = self._silent_level(tags)  # Find which silent tags apply (if any)
 
         # Check for a loop summary accumulated by v2_runner_item_on_ok/skipped
         task_id = result._task._uuid
@@ -100,7 +143,9 @@ class CallbackModule(DefaultCallback):
             color = C.COLOR_CHANGED if summary["changed"] > 0 else C.COLOR_OK
 
             # minimal one-line summary
-            msg = f"ok: [{host_label}] => {summary['ok']} ok, {summary['changed']} changed, {summary['skipped']} skipped => Output suppressed by silent tag, increase verbosity to see details"
+            loop_hint = self._verbosity_hint(required_task_level + 2)
+            header_hint = self._verbosity_hint(required_task_level + 1)
+            msg = f"ok: [{host_label}] => {summary['ok']} ok, {summary['changed']} changed, {summary['skipped']} skipped => use {header_hint} for loop headers, {loop_hint} for details"
             self._display.display(msg, color=color)
             return None
 
@@ -113,7 +158,7 @@ class CallbackModule(DefaultCallback):
 
         # Otherwise: print ONLY the header line
         changed = bool(result._result.get("changed", False))
-        self._display_ok_header_only(result, changed=changed)
+        self._display_ok_header_only(result, changed=changed, required_verbosity=required_task_level + 1)
 
         # else: suppress output by doing nothing
         return None
@@ -123,20 +168,20 @@ class CallbackModule(DefaultCallback):
     def v2_runner_item_on_ok(self, result, **kwargs):
         tags = set(getattr(result._task, "tags", []) or [])
         verbosity = getattr(self._display, "verbosity", 0)
-        required_task_level = self._silent_level(tags, self._silent_task_tags)
-        required_loop_level = self._silent_level(tags, self._silent_loop_tags)
+        required_task_level = self._silent_level(tags)
+        required_loop_level = required_task_level + 1 if required_task_level >= 0 else -1
 
 #
-#                   Verbosity levels: Task v1, Loop v2
+#                   Verbosity levels (e.g. silent_task_v1):
 #                   0       1       2       3
-#   Task summary    x       x       -       -           
-#   Loop Header     -       -       x       -          
-#   Detailsx        -       -       -       x
+#   Task summary    x       x       -       -
+#   Loop Header     -       -       x       -
+#   Details         -       -       -       x
 #
-#   if no silent tags:    show everything as normal
-#   if verbosity > loop and task:  show everything as normal
-#   if verbosity > task and <= loop: show loop header only
-#   if verbosity <= task: show task summary only
+#   if verbosity <= task:          show task summary only
+#   if verbosity = task + 1:       show loop header only
+#   if verbosity > task + 1:       show everything as normal
+#   if no silent tags:             show everything as normal
 #
 
         # No silent tags => default behavior
@@ -150,7 +195,7 @@ class CallbackModule(DefaultCallback):
         # Silent at this verbosity => header-only per loop item
         if verbosity > required_task_level and verbosity <= required_loop_level:
             changed = bool(result._result.get("changed", False))
-            self._display_item_ok_header_only(result, changed=changed)
+            self._display_item_ok_header_only(result, changed=changed, required_verbosity=required_loop_level + 1)
             return None
 
         # Task Summary
@@ -176,8 +221,8 @@ class CallbackModule(DefaultCallback):
     def v2_runner_item_on_skipped(self, result, **kwargs):
         tags = set(getattr(result._task, "tags", []) or [])
         verbosity = getattr(self._display, "verbosity", 0)
-        required_task_level = self._silent_level(tags, self._silent_task_tags)
-        required_loop_level = self._silent_level(tags, self._silent_loop_tags)
+        required_task_level = self._silent_level(tags)
+        required_loop_level = required_task_level + 1 if required_task_level >= 0 else -1
 
         if required_loop_level < 0:
             return super().v2_runner_item_on_skipped(result, **kwargs)
