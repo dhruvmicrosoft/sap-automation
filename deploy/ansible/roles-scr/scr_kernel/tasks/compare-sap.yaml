@@ -63,7 +63,6 @@
   # no_log:                               true
   tags:
     - silent_task_v1
-    - silent_loop_v2
 
 
 - name:                                 "Compare: List - Matching files"
