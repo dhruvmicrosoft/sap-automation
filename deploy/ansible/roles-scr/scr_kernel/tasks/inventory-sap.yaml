@@ -19,17 +19,20 @@
         #                                 mimetype:         {{ object_stats.stat.mimetype }}
         #                                 sub_path:         {{ sub_path }}
         #                                 destination:      {{ destination }}
-    verbosity:                      0
+    verbosity:                          0
 
+# SAP Kernel directory structure (to be recursively inventoried):
+#   /
+#   ┗━sapmnt
+#     ┗━SID
+#       ┗━exe
+#         ┣━uc
+#         ┃ ┗━linuxx86_64
+#         ┣━nuc
+#         ┗━jvm
 - name:                         "SCR Kernel: ({{ function | upper }}) Inventory SAP Kernel for SID {{ sapsid }}"
   block:
-# /sapmnt
-#   /SID
-#     /exe
-#       /uc
-#         /linuxx86_64
-#       /nuc
-#       /jvm
+
 
     - name:                                 "Recursively list files with details and checksums"
       become:                               true                              # root permissions may be required to access certain files and directories
@@ -41,6 +44,8 @@
         get_checksum:                       true
         # checksum_algorithm:                 sha256
       register:                             _results
+      tags:
+        - silent_task_v2                                                           # This task can be very verbose, so we silence it by default and only show it when verbosity >= 3 (-vvv)
 
 
 # Set fact as a global variable by storing it on the localhost (delegation)
@@ -49,14 +54,16 @@
       delegate_facts:                       true
       ansible.builtin.set_fact:
         scr_kernel_files_{{ sapsid }}:      "{{ _results }}"
+      tags:
+        - silent_task_v2                                                           # This task can be very verbose, so we silence it by default and only show it when verbosity >= 3 (-vvv)
 
 
 # TODO: Store scr_kernel_files_{{ sapsid }} in a central location for retrieval in later functions (archive, extract, etc.)
+- name:                                 "Display file inventory"
 
-    - name:                                 "Display file inventory"
-      ansible.builtin.debug:
-        msg:                                "{{ lookup('template', 'roles-scr/scr_kernel/templates/inventory_file_detail.j2') }}"
-        verbosity:                      0
+  ansible.builtin.debug:
+    msg:                                "{{ lookup('template', 'roles-scr/scr_kernel/templates/inventory_file_detail.j2') }}"
+    verbosity:                          0
 
 # /*---------------------------------------------------------------------------8
 # |                                   END                                      |

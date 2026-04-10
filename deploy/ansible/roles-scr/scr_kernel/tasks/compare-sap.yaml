@@ -13,17 +13,17 @@
 #     - Load the inventory data from a previously saved location (if available) to allow the comparison to proceed without forcing the user to re-run the inventory step.
 #     - Fail with a clear error message indicating that the inventory step must be completed before comparison.
 #     - Or, optionally, trigger the inventory step for the missing system before proceeding with the comparison.
-- name:                                 "Compare Source file inventory"
+- name:                                 "Compare: Source file inventory"
   ansible.builtin.debug:
     msg:                                "{{ lookup('template', 'roles-scr/scr_kernel/templates/inventory_file_detail.j2') }}"
-    verbosity:                          0
+    verbosity:                          2
   vars:
     sapsid:                             "{{ scr_source_sid }}"
 
-- name:                                 "Compare Destination file inventory"
+- name:                                 "Compare: Destination file inventory"
   ansible.builtin.debug:
     msg:                                "{{ lookup('template', 'roles-scr/scr_kernel/templates/inventory_file_detail.j2') }}"
-    verbosity:                          0
+    verbosity:                          2
   vars:
     sapsid:                             "{{ scr_dest_sid }}"
 
@@ -34,13 +34,15 @@
 # |                       Compute structural differences                       |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
-- name:                                 "Compute file sets" 
+- name:                                 "Compare: Compute file sets" 
   delegate_to:                          localhost
   delegate_facts:                       true
   ansible.builtin.set_fact:
     scr_common_keys:                    "{{ _source_map.keys() |  intersect(_target_map.keys()) }}"
     scr_extra_on_target:                "{{ _target_map.keys() | difference(_source_map.keys()) }}"
     scr_missing_on_target:              "{{ _source_map.keys() | difference(_target_map.keys()) }}"
+  tags:
+    - silent_task_v1
 
 
 # /*---------------------------------------------------------------------------8
@@ -49,7 +51,7 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 # Checksum comparison on common files
-- name:                                 "Split common files by checksum"
+- name:                                 "Compare: Split common files by checksum"
   delegate_to:                          localhost
   delegate_facts:                       true
   ansible.builtin.set_fact:
@@ -58,18 +60,21 @@
   loop:                                 "{{ hostvars['localhost']['scr_common_keys'] }}"
   loop_control:
     label:                              "{{ item }}"
-  no_log:                               true
+  # no_log:                               true
+  tags:
+    - silent_task_v1
+    - silent_loop_v2
 
 
-- name:                                 ""
+- name:                                 "Compare: List - Matching files"
   ansible.builtin.debug:
     var:                                hostvars['localhost']['scr_matches']
-    verbosity:                          0
+    verbosity:                          2
 
-- name:                                 ""
+- name:                                 "Compare: List - Changed files"
   ansible.builtin.debug:
     var:                                hostvars['localhost']['scr_changed']
-    verbosity:                          0
+    verbosity:                          2
 
 
 
@@ -79,7 +84,7 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 # Consolidated listing (human‑readable)
-- name:                                 "Build consolidated sync report"
+- name:                                 "Compare: Build consolidated sync report"
   delegate_to:                          localhost
   delegate_facts:                       true
   ansible.builtin.set_fact:
@@ -91,12 +96,14 @@
         + (hostvars['localhost']['scr_changed']           | map('regex_replace', '^(.*)$', 'OVERWRITE_FROM_SOURCE...  \1') | list)
         + (hostvars['localhost']['scr_extra_on_target']   | map('regex_replace', '^(.*)$', 'REMOVE_FROM_TARGET......  \1') | list)
       }}
+  tags:
+    - silent_task_v1
 
 
-# - name:                                 "Sync Report"
-#   ansible.builtin.debug:
-#     var:                                hostvars['localhost']['scr_sync_report']
-#     verbosity:                          2
+- name:                                 "Compare: Sync Report"
+  ansible.builtin.debug:
+    var:                                hostvars['localhost']['scr_sync_report']
+    verbosity:                          0
 
 # /*---------------------------------------------------------------------------8
 # |                                   END                                      |
