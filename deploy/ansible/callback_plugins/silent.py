@@ -10,12 +10,12 @@ DOCUMENTATION = DEFAULT_DOCUMENTATION
 #
 # Silent Output Control Tags
 #
-#   silent_task_v[N]
+#   silent_v[N]
 #
 # Example:
 #
 #   tags:
-#     - silent_task_v1
+#     - silent_v1
 #
 # The use of a silent tag suppresses normal task output up to and including
 # the verbosity level specified in the tag. To render the default Ansible
@@ -23,7 +23,7 @@ DOCUMENTATION = DEFAULT_DOCUMENTATION
 # the silent tag.
 #
 # For example:
-#   silent_task_v1 requires a verbosity of 2 (-vv) or higher to display
+#   silent_v1 requires a verbosity of 2 (-vv) or higher to display
 #   the normal task output.
 #
 # Loop Behavior:
@@ -31,7 +31,7 @@ DOCUMENTATION = DEFAULT_DOCUMENTATION
 # When applied to a task that includes a loop, the loop detail level is
 # automatically set to task_level + 1.
 #
-# Verbosity interaction (e.g. silent_task_v1):
+# Verbosity interaction (e.g. silent_v1):
 #
 #   verbosity <= 1 (task level):
 #       loop summary is displayed (ok/changed/skipped counts)
@@ -41,6 +41,18 @@ DOCUMENTATION = DEFAULT_DOCUMENTATION
 #
 #   verbosity >= 3 (above loop level):
 #       full default Ansible output is displayed
+#
+#
+#                   Verbosity levels (e.g. silent_v1):
+#                   0       1       2       3
+#   Task summary    x       x       -       -
+#   Loop Header     -       -       x       -
+#   Details         -       -       -       x
+#
+#   if verbosity <= task:          show task summary only
+#   if verbosity = task + 1:       show loop header only
+#   if verbosity > task + 1:       show everything as normal
+#   if no silent tags:             show everything as normal
 #
 
 
@@ -56,7 +68,7 @@ class CallbackModule(DefaultCallback):
     def __init__(self):
         super().__init__()
         self._loop_summary = {}
-        self._silent_task_prefix = "silent_task_v"
+        self._silent_task_prefix = "silent_v"
 
 
     # ----------------------------------+---------------------------------------
@@ -101,7 +113,7 @@ class CallbackModule(DefaultCallback):
 
     # ----------------------------------+---------------------------------------
     def _silent_level(self, tags):
-        """Return the min verbosity threshold from matching silent_task_v tags, or -1 if none match."""
+        """Return the min verbosity threshold from matching silent_v tags, or -1 if none match."""
         levels = []
         for tag in tags:
             if tag.startswith(self._silent_task_prefix):
@@ -170,19 +182,6 @@ class CallbackModule(DefaultCallback):
         verbosity = getattr(self._display, "verbosity", 0)
         required_task_level = self._silent_level(tags)
         required_loop_level = required_task_level + 1 if required_task_level >= 0 else -1
-
-#
-#                   Verbosity levels (e.g. silent_task_v1):
-#                   0       1       2       3
-#   Task summary    x       x       -       -
-#   Loop Header     -       -       x       -
-#   Details         -       -       -       x
-#
-#   if verbosity <= task:          show task summary only
-#   if verbosity = task + 1:       show loop header only
-#   if verbosity > task + 1:       show everything as normal
-#   if no silent tags:             show everything as normal
-#
 
         # No silent tags => default behavior
         if required_task_level < 0 and required_loop_level < 0:
