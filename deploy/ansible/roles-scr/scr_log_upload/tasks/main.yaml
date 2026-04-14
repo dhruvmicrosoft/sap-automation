@@ -15,6 +15,46 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
+# |           Discover storage account name from resource group                |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                 "SCR Log Upload - Discover tfstate storage account in {{ scr_azure_resource_group }}"
+  ansible.builtin.command: >-
+    az storage account list
+    --resource-group {{ scr_azure_resource_group }}
+    --query "[?contains(name, 'tfstate')].name | [0]"
+    --output tsv
+  register:                             _scr_storage_account_discovery
+  delegate_to:                          localhost
+  run_once:                             true
+  changed_when:                         false
+  when:                                 scr_azure_storage_account is not defined
+
+- name:                                 "SCR Log Upload - Set scr_azure_storage_account from discovery"
+  ansible.builtin.set_fact:
+    scr_azure_storage_account:          "{{ _scr_storage_account_discovery.stdout | trim }}"
+  delegate_to:                          localhost
+  run_once:                             true
+  when:
+    - scr_azure_storage_account is not defined
+    - _scr_storage_account_discovery.stdout | trim | length > 0
+
+- name:                                 "SCR Log Upload - Assert storage account was resolved"
+  ansible.builtin.assert:
+    that:
+      - scr_azure_storage_account is defined
+      - scr_azure_storage_account | length > 0
+    fail_msg: >
+      Could not resolve a storage account containing 'tfstate' in resource group
+      '{{ scr_azure_resource_group }}'. Set scr_azure_storage_account explicitly
+      via --extra-vars to bypass discovery.
+  delegate_to:                          localhost
+  run_once:                             true
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
 # |                   Discover log files to be uploaded                        |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/

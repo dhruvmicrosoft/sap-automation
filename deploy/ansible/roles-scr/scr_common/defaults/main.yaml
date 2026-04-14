@@ -19,9 +19,12 @@ scr_datastore_root:       "{{ ansible_env.HOME | default('/tmp') }}/scr/datastor
 scr_run_id:               "{{ ansible_date_time.iso8601 }}"
 
 # ── Azure Blob Storage ───────────────────────────────────────────────────────
-scr_azure_subscription_id:  "02993e58-2910-4b39-910c-aeccd207abf7"
-scr_azure_resource_group:   "MKDS0-EUS2-SAP_LIBRARY"
-scr_azure_storage_account:  "mkds0eus2tfstate152"
+# scr_azure_subscription_id: set in inventory (host var subscription_id) or --extra-vars
+# scr_azure_resource_group:  set in inventory all: vars — it is environment-specific
+# scr_azure_storage_account: discovered dynamically by scr_log_upload from the resource
+#                             group (looks for a storage account whose name contains
+#                             'tfstate', matching the SDAF naming convention).
+#                             Override via --extra-vars if you need a specific account.
 scr_azure_container:        "tfstate"         # existing container; SCR blobs land under scr-runs/ prefix
 
 # ── Authentication — MSI (managed identity) ──────────────────────────────────
@@ -30,17 +33,12 @@ scr_azure_container:        "tfstate"         # existing container; SCR blobs la
 scr_azure_use_managed_identity: true
 scr_auth_mode:              "msi"
 
-# ── Source system ────────────────────────────────────────────────────────────
-# Note: scr_source_sid and scr_dest_sid must also be passed via --extra-vars
-# because they are needed by the playbook hosts: pattern before vars_files loads.
-scr_source_sid:             "X90"
-scr_source_prefix:          "MKDS1-EUS2-SAP00"
-scr_source_kv_name:         "MKDS1EUS2SAP00user54B"
-
-# ── Destination system ───────────────────────────────────────────────────────
-scr_dest_sid:               "X91"
-scr_dest_prefix:            "MKDS1-EUS2-SAP00"
-scr_dest_kv_name:           "MKDS1EUS2SAP00user54B"
+# ── Source / Destination system ──────────────────────────────────────────────
+# These must NOT be defined here. scr_source_sid / scr_dest_sid are required
+# via --extra-vars (needed before vars_files loads to resolve the hosts: pattern).
+# scr_source_prefix, scr_source_kv_name, scr_dest_prefix, scr_dest_kv_name must
+# come from inventory host/group vars or --extra-vars so they are never silently
+# overridden by this file (vars_files has higher precedence than inventory vars).
 
 # ── SCR workflow parameters ──────────────────────────────────────────────────
 scr_db_type:                "hana"            # oracle | hana | ase

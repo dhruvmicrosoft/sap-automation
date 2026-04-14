@@ -24,3 +24,5 @@ scr_dest_prefix:                        "MKDSE-SECE-SAP00"
 scr_dest_kv_name:                       "MKDSESECESAP00user2f8"
 # scr_dest_ssh_username:                  "azureadm"
 # scr_dest_ssh_private_key_file:          "/tmp/ansible_kv_key_{{ inventory_hostname }}"
+
+scr_azure_resource_group:   "MKDSD-SECE-SAP_LIBRARY"

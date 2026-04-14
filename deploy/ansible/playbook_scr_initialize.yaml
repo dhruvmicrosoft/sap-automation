@@ -10,8 +10,10 @@
 #   --tags secrets      Run Step 2 only  (pull Key Vault SSH credentials)
 #   --tags upload       Run Step 3 only  (upload log to Azure)
 #   --tags discovery    Run Step 4 only  (system discovery on all hosts)
-#   --tags fetch        Run Step 5 only  (fetch reports + re-upload to Azure)
-#   --tags cleanup      Run Step 6 only  (remove temp SSH key files)
+#   --tags fetch        Run Step 5 only  (fetch reports to controller)
+#   --tags kernel       Run Steps 6-8   (SAP kernel inventory, compare, report)
+#   --tags upload       Run Step 9 only  (upload all logs to Azure)
+#   --tags cleanup      Run Step 10 only (remove temp SSH key files)
 #
 # Combine tags to run a subset, e.g.:
 #   --tags "secrets,discovery"
@@ -26,8 +28,12 @@
 # |    2. Pull SSH credentials from Key Vault (scr_keys)   [tag: secrets]     |
 # |    3. Upload initial log to Azure Blob Storage          [tag: upload]      |
 # |    4. Run system discovery on source + destination      [tag: discovery]   |
-# |    5. Fetch reports + re-upload all files to Azure      [tag: fetch]       |
-# |    6. Clean up temp SSH key files                       [tag: cleanup]     |
+# |    5. Fetch discovery reports to controller             [tag: fetch]       |
+# |    6. SAP kernel inventory on source + destination      [tag: kernel]      |
+# |    7. SAP kernel compare (source vs target)             [tag: kernel]      |
+# |    8. Write kernel sync report to controller            [tag: kernel]      |
+# |    9. Upload all logs + reports to Azure                [tag: fetch]       |
+# |   10. Clean up temp SSH key files                       [tag: cleanup]     |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 - hosts:                                "{{ scr_source_sid | upper }}_PAS :
@@ -249,6 +255,131 @@
         insertafter:                    EOF
       delegate_to:                      localhost
       tags:                             [fetch]
+
+    - name:                             "Controller - Log discovery reports fetched"  # noqa: run-once[task]
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line:                           "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 5 : Discovery reports fetched to controller"
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [fetch]
+
+
+    # -----------------------------------------------------------------------
+    # Steps 6-7 — SAP Kernel inventory on source + destination hosts, then
+    #             compare.
+    # -----------------------------------------------------------------------
+    - name:                             "Source - Inventory SAP Kernel Files"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_kernel
+      vars:
+        function:                       "inventory"
+        kernel:                         "sap"
+        sapsid:                         "{{ scr_source_sid }}"
+      when:
+        - (sapsid | upper + '_PAS') in vars['group_names'] or
+          (sapsid | upper + '_DB')  in vars['group_names']
+      tags:                             [kernel]
+
+    - name:                             "Destination - Inventory SAP Kernel Files"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_kernel
+      vars:
+        function:                       "inventory"
+        kernel:                         "sap"
+        sapsid:                         "{{ scr_dest_sid }}"
+      when:
+        - (sapsid | upper + '_PAS') in vars['group_names'] or
+          (sapsid | upper + '_DB')  in vars['group_names']
+      tags:                             [kernel]
+
+    - name:                             "Controller - Log kernel inventory completed"  # noqa: run-once[task]
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line:                           "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
+
+    - name:                             "Compare - SAP Kernel Files"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_kernel
+      vars:
+        function:                       "compare"
+        kernel:                         "sap"
+      run_once:                         true
+      tags:                             [kernel]
+
+    - name:                             "Controller - Log kernel comparison completed"  # noqa: run-once[task]
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line:                           "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 7 : SAP kernel comparison completed"
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
+
+    # -----------------------------------------------------------------------
+    # Step 8 — Write the kernel sync report to the controller log directory.
+    #          Sections: COPY, OVERWRITE, REMOVE  (MATCH items omitted).
+    #          The file ends in .log so scr_log_upload picks it up
+    #          automatically during the post_tasks upload pass.
+    # -----------------------------------------------------------------------
+    - name:                             "Controller - Write kernel sync report"  # noqa: run-once[task]
+      ansible.builtin.copy:
+        dest:                           "{{ scr_log_dir }}/kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
+        mode:                           "0644"
+        content:                        "{{ lookup('template', 'roles-scr/scr_kernel/templates/kernel_sync_report.j2') }}"
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
+
+    - name:                             "Controller - Log kernel sync report written"  # noqa: run-once[task]
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line:                           "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 8 : Kernel sync report written — kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
+
+    # -----------------------------------------------------------------------
+    # Step 9 — Persist kernel sync state as JSON in the controller log dir.
+    #          Uploaded to the storage account in the post_tasks pass.
+    #          Load this file to resume or abort an SCR without re-running
+    #          the inventory + compare steps.
+    # -----------------------------------------------------------------------
+    - name:                             "Controller - Write kernel sync state JSON"  # noqa: run-once[task]
+      ansible.builtin.copy:
+        dest:                           "{{ scr_log_dir }}/kernel_sync_state_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.json"
+        mode:                           "0644"
+        content: |-
+          {{ {
+            'run_id':       scr_run_id,
+            'source_sid':   scr_source_sid,
+            'dest_sid':     scr_dest_sid,
+            'generated':    ansible_date_time.iso8601,
+            'kernel_sync_state': {
+              'match':                 hostvars['localhost']['scr_matches']           | default([]) | sort,
+              'copy_from_source':      hostvars['localhost']['scr_missing_on_target'] | default([]) | sort,
+              'overwrite_from_source': hostvars['localhost']['scr_changed']           | default([]) | sort,
+              'remove_from_target':    hostvars['localhost']['scr_extra_on_target']   | default([]) | sort
+            }
+          } | to_nice_json }}
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
+
+    - name:                             "Controller - Log kernel sync state JSON written"  # noqa: run-once[task]
+      ansible.builtin.lineinfile:
+        path:                           "{{ scr_log_dir }}/scr_initialize.log"
+        line:                           "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] STEP 9 : Kernel sync state JSON written — kernel_sync_state_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.json"
+        insertafter:                    EOF
+      delegate_to:                      localhost
+      run_once:                         true
+      tags:                             [kernel]
 
 
 # /*---------------------------------------------------------------------------8
