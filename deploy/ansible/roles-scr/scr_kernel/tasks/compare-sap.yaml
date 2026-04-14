@@ -28,6 +28,7 @@
     sapsid:                             "{{ scr_dest_sid }}"
 
 
+# TODO: LOG: Starting Compare
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
@@ -98,6 +99,11 @@
   tags:
     - silent_v1
 
+# TODO: OBJ_STORE: Store scr_matches
+# TODO: OBJ_STORE: Store scr_missing_on_target
+# TODO: OBJ_STORE: Store scr_changed
+# TODO: OBJ_STORE: Store scr_extra_on_target
+# TODO: OBJ_STORE: Store scr_sync_report
 
 - name:                                 "Compare: Sync Report"
   ansible.builtin.debug:

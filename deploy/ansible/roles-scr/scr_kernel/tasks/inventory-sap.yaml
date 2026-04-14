@@ -58,7 +58,8 @@
         - silent_v2                                                           # This task can be very verbose, so we silence it by default and only show it when verbosity >= 3 (-vvv)
 
 
-# TODO: Store scr_kernel_files_{{ sapsid }} in a central location for retrieval in later functions (archive, extract, etc.)
+# TODO: OBJ_STORE: Store scr_kernel_files_{{ sapsid }}
+
 - name:                                 "Display file inventory"
 
   ansible.builtin.debug:

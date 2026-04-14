@@ -183,3 +183,14 @@ With a custom `scr_log_upload_blob_prefix`, you control the full path.
 - **Overwrite** — existing blobs at the same path are overwritten. This is intentional: calling the role early (initial log) and then again at the end (final log + reports) uses the same blob path, giving you the most up-to-date version.
 - **Empty directory** — if `scr_log_upload_fail_if_none` is `false` (the default), the role emits a debug message and exits cleanly. This is the expected behaviour on the very first run before any logs exist.
 - **File disappears between find and upload** — the `stat` check in `upload_logs.yaml` guards against race conditions. If a file is removed between the `find` and the upload loop, that file is skipped with a debug message rather than failing.
+
+
+
+
+
+- name: LOG_TOOL
+  LOG_TOOL:
+    activity:       [LOG_SUMMARY | LOG_DETAIL | OBJECT | FILE]
+    action:         [store | retrieve | update | delete]
+    payload:        [fact | File_path | var_message ]
+
