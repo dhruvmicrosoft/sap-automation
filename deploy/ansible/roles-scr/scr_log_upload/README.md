@@ -188,19 +188,27 @@ With a custom `scr_log_upload_blob_prefix`, you control the full path.
 
 
 
-- name: LOG_TOOL
-  LOG_TOOL:
-    activity:               [LOG_SUMMARY | LOG_DETAIL | OBJECT | FILE]
-    action:                 [store | retrieve | update | delete]
-    payload:                [fact | File_path | var_message ]
+- name:                     LOG_FUNCTION
+  LOG_FUNCTION:
+    activity:               [log_summary | log_detail | object | file]
+    action:                 [store | retrieve | update | delete] (CRUD)
+    payload:                [fact | file_path | var_message]
   vars:
     payload_message:        "string"
     payload_message:      
                             - object1
                             - object2
 
+Function                    Method                                  Object
+----------------------      -------------------------------------   -----------------------------------
+log_summary                 store                                   string or list of strings
+log_detail                  store                                   string or list of strings
+object                      [store | retrieve | update | delete]    fact or list of facts
+file                        [store | retrieve | update | delete]    file_path or list of file_paths
 
-LOG_TOOL > LOG_DETAIL > RETURN
+Calls
+------
+LOG_TOOL > [LOG_SUMMARY|LOG_DETAIL] > RETURN
 LOG_TOOL > [OBJECT|FILE] > LOG_DETAIL > RETURN
 
 
