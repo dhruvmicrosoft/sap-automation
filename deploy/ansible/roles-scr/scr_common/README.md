@@ -71,7 +71,7 @@ All variables live in `defaults/main.yaml`. They are **lowest-priority defaults*
 | Variable | Value | Description |
 |---|---|---|
 | `scr_azure_use_managed_identity` | `true` | Use MSI — no client secrets required |
-| `scr_auth_mode` | `msi` | Authentication mode consumed by `scr_log_upload` and other roles |
+| `scr_auth_mode` | `msi` | Authentication mode consumed by `scr_log_function` and other roles |
 
 > The storage account has key-based auth disabled. All storage operations use `az storage blob upload --auth-mode login` (MSI). The deployer VM's managed identity must have **Storage Blob Data Contributor** on the storage account.
 

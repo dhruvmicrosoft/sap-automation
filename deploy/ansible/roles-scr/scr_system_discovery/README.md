@@ -217,7 +217,7 @@ After all hosts finish discovery, the playbook fetches the `.txt` files and plac
   loop: "{{ _scr_discovery_reports.files }}"
 ```
 
-These fetched files are then uploaded to Azure Blob Storage by `scr_log_upload` in `post_tasks`.
+These fetched files are then uploaded to Azure Blob Storage by `scr_log_function` (`activity: file, action: store`) in `post_tasks`.
 
 ---
 

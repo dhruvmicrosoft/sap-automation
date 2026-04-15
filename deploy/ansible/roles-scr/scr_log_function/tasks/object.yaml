@@ -1,0 +1,82 @@
+---
+# scr_log_function/tasks/object.yaml
+#
+# CRUD operations on Ansible facts serialised as JSON blobs.
+# Each fact is stored as a separate blob in the objectstore/ prefix.
+#
+# Supported actions: store | retrieve | update | delete
+#
+# vars:
+#   payload_message:  fact name (string) or list of fact names
+#   result_var:       variable name to register retrieved data (retrieve only)
+#
+# Blob path: scr-runs/<run_id>/objectstore/<fact_name>.json
+
+
+# /*---------------------------------------------------------------------------8
+# |  STORE / UPDATE — serialize fact(s) to JSON and upload                    |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                 "SCR Log Function [object/{{ action }}] - Serialize fact to JSON"
+  ansible.builtin.copy:
+    dest:                               "{{ scr_log_function_log_dir }}/{{ item }}.json"
+    content:                            "{{ vars[item] | to_nice_json }}"
+    mode:                               "0644"
+  loop:                                 "{{ [payload_message] | flatten }}"
+  delegate_to:                          localhost
+  when:                                 action in ['store', 'update']
+
+- name:                                 "SCR Log Function [object/{{ action }}] - Upload JSON to Azure"
+  ansible.builtin.command: >-
+    az storage blob upload
+    --account-name  {{ scr_azure_storage_account }}
+    --container-name {{ scr_azure_container }}
+    --name          {{ scr_log_function_objectstore_prefix }}{{ item }}.json
+    --file          {{ scr_log_function_log_dir }}/{{ item }}.json
+    --overwrite
+    --auth-mode     login
+  loop:                                 "{{ [payload_message] | flatten }}"
+  delegate_to:                          localhost
+  changed_when:                         true
+  when:                                 action in ['store', 'update']
+
+
+# /*---------------------------------------------------------------------------8
+# |  RETRIEVE — download blob and load JSON into a named variable             |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                 "SCR Log Function [object/retrieve] - Download JSON from Azure"
+  ansible.builtin.command: >-
+    az storage blob download
+    --account-name  {{ scr_azure_storage_account }}
+    --container-name {{ scr_azure_container }}
+    --name          {{ scr_log_function_objectstore_prefix }}{{ payload_message }}.json
+    --file          {{ scr_log_function_log_dir }}/_retrieve_{{ payload_message }}.json
+    --overwrite
+    --auth-mode     login
+  delegate_to:                          localhost
+  changed_when:                         false
+  when:                                 action == "retrieve"
+
+- name:                                 "SCR Log Function [object/retrieve] - Load JSON into {{ result_var }}"
+  ansible.builtin.set_fact:
+    "{{ result_var }}":                 "{{ lookup('file', scr_log_function_log_dir + '/_retrieve_' + payload_message + '.json') | from_json }}"
+  delegate_to:                          localhost
+  when:                                 action == "retrieve"
+
+
+# /*---------------------------------------------------------------------------8
+# |  DELETE — remove blob(s) from Azure                                       |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                 "SCR Log Function [object/delete] - Delete blob from Azure"
+  ansible.builtin.command: >-
+    az storage blob delete
+    --account-name  {{ scr_azure_storage_account }}
+    --container-name {{ scr_azure_container }}
+    --name          {{ scr_log_function_objectstore_prefix }}{{ item }}.json
+    --auth-mode     login
+  loop:                                 "{{ [payload_message] | flatten }}"
+  delegate_to:                          localhost
+  changed_when:                         true
+  when:                                 action == "delete"

@@ -28,7 +28,19 @@
     sapsid:                             "{{ scr_dest_sid }}"
 
 
-# TODO: LOG: Starting Compare
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |                      Log: Starting SAP Kernel Compare                     |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                 "LOG - Starting SAP Kernel Compare"
+  ansible.builtin.include_role:
+    name:                               roles-scr/scr_log_function
+  vars:
+    activity:                           log_summary
+    action:                             store
+    payload_message:                    "Starting SAP Kernel Compare"
+  run_once:                             true
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |

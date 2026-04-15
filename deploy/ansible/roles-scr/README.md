@@ -9,8 +9,9 @@ This directory contains all Ansible roles used by the **SAP System Copy and Refr
 ```
 roles-scr/
 ├── scr_common/              # Shared configuration and utility task files
+├── scr_kernel/              # SAP and DB kernel inventory, compare, and sync
 ├── scr_keys/                # Azure Key Vault credential retrieval
-├── scr_log_upload/          # Azure Blob Storage log/report uploader
+├── scr_log_function/        # Generic logging and Azure Blob Storage function
 └── scr_system_discovery/    # Comprehensive SAP system fact gathering
 ```
 
@@ -21,8 +22,9 @@ roles-scr/
 | Role | Purpose | Called As |
 |---|---|---|
 | `scr_common` | Central defaults file; shared utility tasks | `vars_files:` (defaults) or `include_role tasks_from:` (tasks) |
+| `scr_kernel` | SAP and DB kernel inventory, compare, and sync report | `include_role` |
 | `scr_keys` | Pulls SSH credentials from Azure Key Vault via MSI | `include_role` |
-| `scr_log_upload` | Uploads `.log`/`.txt` files from the controller to Azure Blob Storage | `include_role` |
+| `scr_log_function` | Generic log appending and Azure Blob Storage CRUD (summary, detail, object, file) | `include_role` |
 | `scr_system_discovery` | Discovers OS, SAP, DB, topology, network, and storage facts on each SAP host | `include_role` |
 
 ---
@@ -37,17 +39,17 @@ playbook_scr_initialize.yaml
 ├── vars_files: scr_common/defaults/main.yaml   ← loads all shared vars
 │
 ├── PRE_TASKS
-│   ├── [logging]    Write initial log to controller
-│   ├── [secrets]    scr_keys  ← pull SSH creds from Key Vault (source + dest)
-│   └── [upload]     scr_log_upload  ← upload initial log to Azure Blob
+│   ├── [logging]    Write summary log header; scr_log_function log_summary ← STEP 1-3
+│   └── [secrets]    scr_keys  ← pull SSH creds from Key Vault (source + dest)
 │
 ├── TASKS  (runs in parallel across all 4 hosts)
 │   ├── [discovery]  scr_system_discovery  ← gather facts on source hosts
 │   ├── [discovery]  scr_system_discovery  ← gather facts on dest hosts
-│   └── [fetch]      Fetch per-host .txt reports → controller; append to log
+│   ├── [kernel]     scr_kernel  ← inventory + compare + sync report
+│   └── [fetch]      Fetch per-host reports → controller; scr_log_function log_summary ← STEP 4-9
 │
 └── POST_TASKS  (runs once, after ALL hosts finish)
-    ├── [fetch,upload]  scr_log_upload  ← upload all logs + reports to Azure
+    ├── [fetch,upload]  scr_log_function file/store ← upload artifacts to filestore
     └── [cleanup]       scr_keys  ← remove temp SSH key files
 ```
 
@@ -79,13 +81,14 @@ Each step has a tag so you can run only what you need:
 
 | Tag | What it runs |
 |---|---|
-| `logging` | Step 1 — Create log directory and write initial log entry |
+| `logging` | Step 1 — Write summary log header and log STEP 1 |
 | `secrets` | Step 2 — Pull SSH credentials from Azure Key Vault |
-| `upload` | Step 3 — Upload log file(s) to Azure Blob Storage |
 | `discovery` | Step 4 — Run system discovery on all SAP hosts |
-| `fetch` | Step 5 — Fetch per-host reports and re-upload everything to Azure |
-| `cleanup` | Step 6 — Remove temp SSH key files from the controller |
-| `always` | Setup tasks that always run regardless of other tags (date/time facts, blob prefix) |
+| `fetch` | Step 5 — Fetch per-host reports, log STEP 4-5 |
+| `kernel` | Steps 6-9 — SAP kernel inventory, compare, reports, log STEP 6-9 |
+| `upload` | pre_tasks / post_tasks — write and upload summary log, upload artifacts to filestore |
+| `cleanup` | Cleanup — Remove temp SSH key files from the controller |
+| `always` | Setup tasks that always run regardless of other tags (date/time facts, run_id) |
 
 ```bash
 # Discovery only
@@ -120,11 +123,13 @@ All SCR artifacts land in the `tfstate` container of `mkds0eus2tfstate152`:
 ```
 tfstate/
 └── scr-runs/
-    └── scr/
-        └── <ISO8601-timestamp>/          ← unique per run (set in pre_tasks)
-            └── logs/
-                ├── scr_initialize.log    ← main run log
-                └── scr_discovery_<host>_scr_discovery_<role>_<SID>_<epoch>.txt
+    └── <run_id>/                         ← unique per run (ISO8601, set in pre_tasks)
+        ├── logs/
+        │   ├── <run_id>_summary.log      ← high-level step log (log_summary)
+        │   ├── <run_id>_detail.log       ← verbose/diagnostic log (log_detail)
+        │   └── <fact_name>.json          ← serialised Ansible facts (object store)
+        └── filestore/
+            └── <filename>               ← discovery reports, kernel reports, etc.
 ```
 
 ---
@@ -134,7 +139,8 @@ tfstate/
 Each role has its own detailed README:
 
 - [`scr_common/README.md`](scr_common/README.md) — Shared defaults and utility tasks
-- [`scr_log_upload/README.md`](scr_log_upload/README.md) — Azure Blob Storage uploader (also usable standalone)
+- [`scr_kernel/readme.md`](scr_kernel/readme.md) — SAP and DB kernel inventory, compare, and sync
+- [`scr_log_function/README.md`](scr_log_function/README.md) — Generic logging and Azure Blob Storage function
 - [`scr_system_discovery/README.md`](scr_system_discovery/README.md) — SAP system fact discovery
 
 ---
@@ -143,7 +149,6 @@ Each role has its own detailed README:
 
 | Role | Purpose |
 |---|---|
-| `scr_kernel` | SAP and DB kernel parity checks between source and target |
 | `scr_parity` | Pre-copy parity validation (OS, SAP kernel, DB kernel) |
 | `scr_refresh` | Database refresh orchestration |
 

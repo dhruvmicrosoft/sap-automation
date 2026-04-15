@@ -1,0 +1,16 @@
+---
+# defaults for scr_log_function role
+
+# Local directory for log files on the controller
+scr_log_function_log_dir:         "{{ scr_log_dir | default(ansible_env.HOME + '/scr/logs') }}"
+
+# Blob path prefixes inside the tfstate container
+#   logs/        → summary and detail log files (written by log_summary / log_detail)
+#   objectstore/ → Ansible facts serialised as JSON (written by object store/update)
+#   filestore/   → arbitrary files uploaded by the file activity
+scr_log_function_logs_prefix:        "scr-runs/{{ scr_run_id | default('unknown') }}/logs/"
+scr_log_function_objectstore_prefix: "scr-runs/{{ scr_run_id | default('unknown') }}/objectstore/"
+scr_log_function_filestore_prefix:   "scr-runs/{{ scr_run_id | default('unknown') }}/filestore/"
+
+# Global run index — fixed path, shared across all runs
+scr_log_function_index_blob:         "scr-runs/scr_global_index.json"

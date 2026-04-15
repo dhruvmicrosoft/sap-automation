@@ -14,14 +14,15 @@ scr_log_dir:              "{{ ansible_env.HOME | default('/tmp') }}/scr/logs"
 scr_datastore_root:       "{{ ansible_env.HOME | default('/tmp') }}/scr/datastore"
 
 # ── Run identity ────────────────────────────────────────────────────────────
-# scr_run_id and scr_blob_prefix are set dynamically in the playbook pre_tasks
-# using ansible_date_time so each run gets a unique folder in Azure.
-scr_run_id:               "{{ ansible_date_time.iso8601 }}"
+# scr_run_id is set dynamically at the start of each play by the
+# scr_log_function index/register action. It is a zero-padded sequential
+# number (e.g. 0001, 0002) stored in the global run index blob.
+# Do NOT define a static default here.
 
 # ── Azure Blob Storage ───────────────────────────────────────────────────────
 # scr_azure_subscription_id: set in inventory (host var subscription_id) or --extra-vars
 # scr_azure_resource_group:  set in inventory all: vars — it is environment-specific
-# scr_azure_storage_account: discovered dynamically by scr_log_upload from the resource
+# scr_azure_storage_account: discovered dynamically by scr_log_function from the resource
 #                             group (looks for a storage account whose name contains
 #                             'tfstate', matching the SDAF naming convention).
 #                             Override via --extra-vars if you need a specific account.
