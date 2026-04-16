@@ -1,0 +1,79 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+# REQUIRED INPUTS:
+#   sapsid:         SID of the SAP system (e.g., PRD)
+#   function:       Function being performed (e.g., "archive")
+#   scr_source_sid: Source system SID (e.g., PRD)
+#   scr_changed:    List of files that are present in both source and target systems but have different checksums (indicating they have changed and may need to be updated on the target system)
+#   scr_missing:    List of files that are present in the source system but missing in the target system (these are the files we want to archive and transfer to the target system for remediation)
+#   progress:       List of dictionaries tracking the status of each step in the process (inventory, compare, archive, upload, cleanup). This can be used for logging, debugging, and resuming the process if needed.
+
+
+
+# PROGRESS List of Dictionaries:
+#   - step:     string
+#     status:   not started | in progress | completed
+#     details:  string (optional, for logging or debugging purposes)
+# 
+# Example:
+#   progress:
+#     - step:     "inventory"
+#       status:   "completed"
+#       details:  "Inventory completed successfully with 100 files found."
+#     - step:     "compare"
+#       status:   "completed"
+#       details:  "Comparison completed successfully with 100 files found."
+#
+#   progress:
+#     - {step: "inventory",         status: "completed",         details: "Inventory completed successfully with 100 files found."}
+#     - {step: "compare",           status: "completed",         details: "Comparison completed successfully with 100 files found."}
+#     - {step: "archive",           status: "completed",         details: "Archive completed successfully with 100 files found."}
+#     - {step: "upload",            status: "completed",         details: "Upload completed successfully with 100 files found."}
+#     - {step: "cleanup",           status: "completed",         details: "Cleanup completed successfully with 100 files found."}
+
+---
+# -------------------------------------+---------------------------------------8
+
+# TODO: STEP_CHECK:
+#  - Load Obect from store
+#  - Check if 'archive' step is already marked as completed
+#  - If completed, log "Archive step already completed. Skipping  archive step." and skip to the next step.
+#  - If not completed, log "Archive step not completed. Executing archive step." and proceed with the archive steps.
+
+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Archive SAP Kernel for SID {{ sapsid }}"
+  block:
+
+
+# TODO: OBJ_STORE: Update step status to 'in progress' for archive step
+# TODO: OBJ_STORE: Load inventory results for source and target systems (if not already loaded) to get the list of files to archive
+#                   scr_missing should contain the list of files that are present in the source but missing in the target, which is what we want to archive and transfer to the target system for remediation.
+#                   scr_changed could also be included if we want to transfer files that are present in both systems but have different checksums (indicating they have changed and may need to be updated on the target system).
+
+    - name:                             "SCR KERNEL: ({{ function | upper }}) Create Archive SAP Kernel for SID {{ sapsid }}"
+      ansible.builtin.archive:
+        path:                           "{{ archive_files }}"
+        dest:                           "/tmp/{{ scr_source_sid }}_files.tar.gz"
+        format:                         gz
+      vars:
+        archive_files: >-
+                                        {{ (scr_missing | map('replace', '__SID__', scr_source_sid) | list) +
+                                           (scr_changed | map('replace', '__SID__', scr_source_sid) | list) }}
+ 
+# TODO: FILE_STORE: Store archive
+# TODO: OBJ_STORE: Update step status to 'completed' for archive step
+
+  when: >
+                                        ((progress | default([]))
+                                          | selectattr('step', 'equalto', 'archive')
+                                          | map(attribute='status')
+                                          | first
+                                          | default('')) != 'completed'
+
+
+
+# /*---------------------------------------------------------------------------8
+# |                                   END                                      |
+# +------------------------------------4--------------------------------------*/
+...

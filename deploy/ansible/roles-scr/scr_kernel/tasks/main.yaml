@@ -8,8 +8,8 @@
 #   Kernel = SAP or DB (HANA, Oracle, etc.)
 # compare
 # archive
-# store
-# retrieve
+# call store
+# call retrieve
 # extract and process deltas (remove from target)
 # cleanup
 
