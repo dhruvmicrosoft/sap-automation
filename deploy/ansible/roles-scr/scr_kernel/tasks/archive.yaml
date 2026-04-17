@@ -41,7 +41,6 @@
 #  - If completed, log "Archive step already completed. Skipping  archive step." and skip to the next step.
 #  - If not completed, log "Archive step not completed. Executing archive step." and proceed with the archive steps.
 
-
 - name:                                 "SCR Kernel: ({{ function | upper }}) Archive SAP Kernel for SID {{ sapsid }}"
   block:
 
@@ -52,15 +51,18 @@
 #                   scr_changed could also be included if we want to transfer files that are present in both systems but have different checksums (indicating they have changed and may need to be updated on the target system).
 
     - name:                             "SCR KERNEL: ({{ function | upper }}) Create Archive SAP Kernel for SID {{ sapsid }}"
+      become:                           true                                                        # root permissions may be required to access certain files and directories
+      become_user:                      root                                                        # Run the archive task as root (or the user specified in ansible_user) to ensure we have the necessary permissions to access all files and directories in the SAP kernel directory structure
       ansible.builtin.archive:
         path:                           "{{ archive_files }}"
-        dest:                           "/tmp/{{ scr_source_sid }}_files.tar.gz"
+        dest:                           "/tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz"
         format:                         gz
+        force_archive:                  true                                                        # If the destination archive already exists, overwrite it with the new archive containing the current list of files to be archived. This ensures that we always have an up-to-date archive that reflects the current state of the source system's SAP kernel files, especially if this task is re-run after making changes to the source system or if the inventory results have changed.
       vars:
         archive_files: >-
-                                        {{ (scr_missing | map('replace', '__SID__', scr_source_sid) | list) +
-                                           (scr_changed | map('replace', '__SID__', scr_source_sid) | list) }}
- 
+                                        {{ (hostvars['localhost']['scr_missing_on_target'] | map('replace', '__SID__', scr_source_sid) | list) +
+                                           (hostvars['localhost']['scr_changed']           | map('replace', '__SID__', scr_source_sid) | list) }}
+
 # TODO: FILE_STORE: Store archive
 # TODO: OBJ_STORE: Update step status to 'completed' for archive step
 

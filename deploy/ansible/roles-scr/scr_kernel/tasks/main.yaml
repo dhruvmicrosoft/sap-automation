@@ -4,15 +4,21 @@
 ---
 # -------------------------------------+---------------------------------------8
 # inventory
+#   kernel = SAP or DB (HANA, Oracle, etc.)
 #   sapsid = SID
-#   Kernel = SAP or DB (HANA, Oracle, etc.)
 # compare
+#   kernel = SAP or DB (HANA, Oracle, etc.)
 # archive
+#   kernel = SAP or DB (HANA, Oracle, etc.)
+#   sapsid = SID
 # call store
 # call retrieve
 # extract and process deltas (remove from target)
 # cleanup
 
+# -------------------------------------+
+# Inventory
+# -------------------------------------+
 - name:                                 "SCR Kernel: ({{ function | upper }}) Inventory SAP Kernel for SID"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_kernel/tasks/inventory-sap.yaml
@@ -21,7 +27,7 @@
         - kernel    is defined
         - function  == "inventory"
         - kernel    == "sap"
-        - (sapsid | upper + '_PAS') in vars['group_names']
+        - (sapsid | upper + '_PAS') in vars['group_names']                                          # Run on SAP Application server
 
 
 - name:                                 "SCR Kernel: ({{ function | upper }}) Inventory DB Kernel for SID"
@@ -32,9 +38,12 @@
         - kernel    is defined
         - function  == "inventory"
         - kernel    == "db"
-        - (sapsid | upper + '_DB') in vars['group_names']
+        - (sapsid | upper + '_DB') in vars['group_names']                                           # Run on Database server
 
 
+# -------------------------------------+
+# Compare
+# -------------------------------------+
 - name:                                 "SCR Kernel: ({{ function | upper }}) Compare SAP Kernel for SID"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_kernel/tasks/compare-sap.yaml
@@ -43,6 +52,20 @@
         - kernel    is defined
         - function  == "compare"
         - kernel    == "sap"
+
+
+# -------------------------------------+
+# Archive
+# -------------------------------------+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Archive SAP Kernel for SID"
+  ansible.builtin.include_tasks:
+    file:                               roles-scr/scr_kernel/tasks/archive.yaml
+  when:
+        - function  is defined
+        - kernel    is defined
+        - function  == "archive"
+        - kernel    == "sap"
+        - (sapsid | upper + '_PAS') in vars['group_names']                                          # Run on SAP Application server
 
 
 ...
