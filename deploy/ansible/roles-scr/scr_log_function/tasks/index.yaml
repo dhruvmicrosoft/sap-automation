@@ -73,9 +73,17 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                 "SCR Log Function [index/register] - Allocate run number"
+- name:                                 "SCR Log Function [index/register] - Allocate run number and write to file"
+  ansible.builtin.copy:
+    dest:                               "{{ scr_log_function_log_dir }}/.scr_run_id"
+    content:                            "{{ '%04d' | format((_scr_index.last_run_number | int) + 1) }}"
+    mode:                               "0644"
+  delegate_to:                          localhost
+  when:                                 action == 'register'
+
+- name:                                 "SCR Log Function [index/register] - Set scr_run_id fact from file"
   ansible.builtin.set_fact:
-    scr_run_id:                         "{{ '%04d' | format((_scr_index.last_run_number | int) + 1) }}"
+    scr_run_id:                         "{{ lookup('file', scr_log_function_log_dir + '/.scr_run_id') }}"
   delegate_to:                          localhost
   delegate_facts:                       true
   when:                                 action == 'register'

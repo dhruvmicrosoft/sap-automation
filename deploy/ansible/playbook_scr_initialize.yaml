@@ -35,7 +35,7 @@
 # |   11. Mark run Completed-Success in global index        [tag: cleanup]     |
 # |   12. Clean up temp SSH key files                       [tag: cleanup]     |
 # |                                                                            |
-# +------------------------------------4--------------------------------------*/
+# +---------------------------------------------------------------------------*/
 - hosts:                                "{{ scr_source_sid | upper }}_PAS :
                                          {{ scr_source_sid | upper }}_DB  :
                                          {{ scr_dest_sid   | upper }}_PAS :
@@ -52,6 +52,7 @@
 
   vars_files:
     - roles-scr/scr_common/defaults/main.yaml    # loads scr_log_dir, scr_azure_*, etc.
+    - x_scr_parameters.yaml                      # loads scr_azure_resource_group, etc.
 
 
 # /*---------------------------------------------------------------------------8
@@ -100,8 +101,9 @@
     # Broadcast it to every host so all tasks use the correct run-scoped blob path.
     - name:                             "Controller - Broadcast scr_run_id to all hosts"
       ansible.builtin.set_fact:
-        scr_run_id:                     "{{ hostvars['localhost']['scr_run_id'] }}"
+        scr_run_id:                     "{{ lookup('file', scr_log_dir + '/.scr_run_id') }}"
       tags:                             [logging, always]
+
 
     - name:                             "Controller - Write summary log header"  # noqa: run-once[task]
       ansible.builtin.copy:

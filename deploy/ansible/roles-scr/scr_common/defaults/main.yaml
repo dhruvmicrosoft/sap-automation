@@ -10,8 +10,8 @@
 # +------------------------------------4--------------------------------------*/
 
 # ── Controller paths ────────────────────────────────────────────────────────
-scr_log_dir:              "{{ ansible_env.HOME | default('/tmp') }}/scr/logs"
-scr_datastore_root:       "{{ ansible_env.HOME | default('/tmp') }}/scr/datastore"
+scr_log_dir:              "{{ lookup('env', 'HOME') }}/scr/logs"
+scr_datastore_root:       "{{ lookup('env', 'HOME') }}/scr/datastore"
 
 # ── Run identity ────────────────────────────────────────────────────────────
 # scr_run_id is set dynamically at the start of each play by the
