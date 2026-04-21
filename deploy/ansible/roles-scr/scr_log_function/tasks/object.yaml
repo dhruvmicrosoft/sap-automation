@@ -176,10 +176,13 @@
       ansible.builtin.set_fact:
         _object_store:                  "{{ _object_store
                                             | dict2items
-                                            | rejectattr('key', 'eq', item)
+                                            | rejectattr('key', 'eq', _fact_name)
                                             | items2dict }}"
       loop:                             "{{ _payload_names }}"
       delegate_to:                      localhost
+      vars:
+        _fact_parts:                    "{{ item.split(',') }}"
+        _fact_name:                     "{{ _fact_parts[0] | trim }}"
       changed_when:                     true
 
   when:                                 action == "delete"
