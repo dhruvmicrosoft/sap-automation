@@ -351,92 +351,22 @@
       run_once:                         true
       tags:                             [kernel]
 
-    # -----------------------------------------------------------------------
-    # Step 9 — Build kernel sync state fact and persist it to Azure
-    #          objectstore as scr_kernel_sync_state.json.
-    #          Load this object to resume or abort an SCR without re-running
-    #          the inventory + compare steps.
-    # -----------------------------------------------------------------------
-    - name:                             "Controller - Build kernel sync state fact"  # noqa: run-once[task]
-      ansible.builtin.set_fact:
-        scr_kernel_sync_state:
-          run_id:                       "{{ scr_run_id }}"
-          source_sid:                   "{{ scr_source_sid }}"
-          dest_sid:                     "{{ scr_dest_sid }}"
-          generated:                    "{{ ansible_date_time.iso8601 }}"
-          kernel_sync_state:
-            match:                      "{{ hostvars['localhost']['scr_matches']           | default([]) | sort }}"
-            copy_from_source:           "{{ hostvars['localhost']['scr_missing_on_target'] | default([]) | sort }}"
-            overwrite_from_source:      "{{ hostvars['localhost']['scr_changed']           | default([]) | sort }}"
-            remove_from_target:         "{{ hostvars['localhost']['scr_extra_on_target']   | default([]) | sort }}"
-      delegate_to:                      localhost
-      run_once:                         true
-      tags:                             [kernel]
+
+# -------------------------------------+
 
 
-    - name:                             "LOG - STEP 9: Store kernel sync state to objectstore"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        payload_message:                scr_run_id
-        activity:                       object
-        action:                         store
-      run_once: true
-
-    - name:                             "LOG - STEP 9: Store kernel sync state to objectstore"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        payload_message:                scr_source_sid
-        activity:                       object
-        action:                         store
-      run_once: true
-
-
-    - name:                             "LOG - STEP 9: Store kernel sync state to objectstore"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        payload_message:                scr_kernel_sync_state
-        activity:                       object
-        action:                         store
-      run_once:                         true
-      tags:                             [kernel]
-
-    - name:                             "LOG - STEP 9: Store kernel sync state to objectstore"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        payload_message:                
-          -                             scr_source_sid
-          -                             scr_run_id
-        activity:                       object
-        action:                         retrieve
-      run_once: true
-
-    - name:
-      debug:
-        var:                                scr_source_sid
-        verbosity: 0
-      delegate_to:                          localhost
-      run_once: true
-
-    - name:
-      debug:
-        var:                                scr_run_id
-        verbosity: 0
-      delegate_to:                          localhost
-      run_once: true
 
     - name:                             "LOG - STEP 9: Kernel sync state stored"  # noqa: run-once[task]
       ansible.builtin.include_role:
         name:                           roles-scr/scr_log_function
       vars:
+        payload_message:                "STEP 9 : Kernel sync state stored to objectstore — scr_kernel_sync_state.json"
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 9 : Kernel sync state stored to objectstore — scr_kernel_sync_state.json"
       run_once:                         true
       tags:                             [kernel]
+
+
 
 
 
@@ -445,7 +375,7 @@
       include_role:
         name:                           roles-scr/scr_kernel
       vars:
-        function:                       "archive"                                                 #
+        function:                       "archive"                                                   #
         kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
         sapsid:                         "{{ scr_source_sid }}"                                      # SID
       when:                             
