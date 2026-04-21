@@ -111,16 +111,30 @@
   tags:
     - silent_v1
 
-# TODO: OBJ_STORE: Store scr_matches
-# TODO: OBJ_STORE: Store scr_missing_on_target
-# TODO: OBJ_STORE: Store scr_changed
-# TODO: OBJ_STORE: Store scr_extra_on_target
-# TODO: OBJ_STORE: Store scr_sync_report
-
 - name:                                 "Compare: Sync Report"
   ansible.builtin.debug:
     var:                                hostvars['localhost']['scr_sync_report']
     verbosity:                          0
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Store in object_store                                                      |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                 "SCR: store compare data in object_store"
+  ansible.builtin.include_role:
+    name:                               roles-scr/scr_log_function
+  vars:
+    payload_message:
+                                        - scr_matches,           localhost
+                                        - scr_missing_on_target, localhost
+                                        - scr_changed,           localhost
+                                        - scr_extra_on_target,   localhost
+    activity:                           object
+    action:                             store
+  run_once:                             true
+
 
 # /*---------------------------------------------------------------------------8
 # |                                   END                                      |
