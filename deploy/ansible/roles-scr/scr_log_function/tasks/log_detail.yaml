@@ -53,7 +53,7 @@
     az storage blob upload
     --account-name  {{ scr_azure_storage_account }}
     --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_logs_prefix }}{{ scr_run_id | default('scr') }}_detail.log
+    --name          {{ scr_log_function_logs_prefix }}/{{ scr_run_id | default('scr') }}_detail.log
     --file          {{ scr_log_function_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log
     --overwrite
     --auth-mode     login

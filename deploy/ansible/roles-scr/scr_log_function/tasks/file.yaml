@@ -20,12 +20,12 @@
 - name:                                 "SCR Log Function [file/{{ action }}] - Upload file to Azure"
   ansible.builtin.command: >-
     az storage blob upload
-    --account-name  {{ scr_azure_storage_account }}
+    --account-name   {{ scr_azure_storage_account }}
     --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_filestore_prefix }}{{ item | basename }}
-    --file          {{ item }}
+    --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
+    --file           {{ item }}
     --overwrite
-    --auth-mode     login
+    --auth-mode      login
   loop:                                 "{{ [payload_message] | flatten }}"
   delegate_to:                          localhost
   changed_when:                         true
@@ -39,12 +39,12 @@
 - name:                                 "SCR Log Function [file/retrieve] - Download file from Azure"
   ansible.builtin.command: >-
     az storage blob download
-    --account-name  {{ scr_azure_storage_account }}
+    --account-name   {{ scr_azure_storage_account }}
     --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_filestore_prefix }}{{ item | basename }}
-    --file          {{ result_path | default(scr_log_function_log_dir) }}/{{ item | basename }}
+    --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
+    --file           {{ result_path | default(scr_log_function_log_dir) }}/{{ item | basename }}
     --overwrite
-    --auth-mode     login
+    --auth-mode      login
   loop:                                 "{{ [payload_message] | flatten }}"
   delegate_to:                          localhost
   changed_when:                         false
@@ -58,10 +58,10 @@
 - name:                                 "SCR Log Function [file/delete] - Delete file from Azure"
   ansible.builtin.command: >-
     az storage blob delete
-    --account-name  {{ scr_azure_storage_account }}
+    --account-name   {{ scr_azure_storage_account }}
     --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_filestore_prefix }}{{ item | basename }}
-    --auth-mode     login
+    --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
+    --auth-mode      login
   loop:                                 "{{ [payload_message] | flatten }}"
   delegate_to:                          localhost
   changed_when:                         true

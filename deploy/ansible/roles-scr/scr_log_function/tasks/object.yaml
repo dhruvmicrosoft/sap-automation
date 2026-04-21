@@ -12,71 +12,241 @@
 #
 # Blob path: scr-runs/<run_id>/objectstore/<fact_name>.json
 
+#           single  multi  Complex
+# Store       ✔       ✔     ✔
+# Update      ✔       ✔     ✔
+# Retrieve    ✔       ✔     ✔
+# Delete      ✔       ✔     ✔
+#
+# where:
+#   single  = payload_message is a string representing a single fact name (e.g. "my_fact")
+#   multi   = payload_message is a list of strings representing multiple fact names (e.g. ["fact_one", "fact_two"])
+#   complex = a dictionary of dictionaries and lists
+#
+# Notes:
+#   - store: create or overwrite a blob with the provided fact(s)
+#   - update: merge provided fact(s) with existing blob (new keys are added, existing keys are updated, keys not in payload are left unchanged)
+#   - retrieve: read blob and promote specified keys to facts
+#   - delete: remove specified keys from blob (if multi or complex) or delete entire blob (if single)
+
+
+- name:                                 "SCR Log Function [object/{{ action }}] -----DEBUGGING-----"
+  ansible.builtin.debug:
+    msg: |
+                                        payload_message:      {{ payload_message      | default('undefined') }}
+                                        action:               {{ action               | default('undefined') }}
+                                        _object_store:        {{ _object_store        | default('undefined') }}
+                                        _payload_names:       {{ _payload_names       | default('undefined') }}
+                                        _payload_updates:     {{ _payload_updates     | default('undefined') }}
+    verbosity:                          2
+  delegate_to:                          localhost
+  run_once:                             true
 
 # /*---------------------------------------------------------------------------8
-# |  STORE / UPDATE — serialize fact(s) to JSON and upload                    |
-# +------------------------------------4--------------------------------------*/
-
-- name:                                 "SCR Log Function [object/{{ action }}] - Serialize fact to JSON"
-  ansible.builtin.copy:
-    dest:                               "{{ scr_log_function_log_dir }}/{{ item }}.json"
-    content:                            "{{ vars[item] | to_nice_json }}"
-    mode:                               "0644"
-  loop:                                 "{{ [payload_message] | flatten }}"
-  delegate_to:                          localhost
-  when:                                 action in ['store', 'update']
-
-- name:                                 "SCR Log Function [object/{{ action }}] - Upload JSON to Azure"
-  ansible.builtin.command: >-
-    az storage blob upload
-    --account-name  {{ scr_azure_storage_account }}
-    --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_objectstore_prefix }}{{ item }}.json
-    --file          {{ scr_log_function_log_dir }}/{{ item }}.json
-    --overwrite
-    --auth-mode     login
-  loop:                                 "{{ [payload_message] | flatten }}"
-  delegate_to:                          localhost
-  changed_when:                         true
-  when:                                 action in ['store', 'update']
-
-
-# /*---------------------------------------------------------------------------8
-# |  RETRIEVE — download blob and load JSON into a named variable             |
-# +------------------------------------4--------------------------------------*/
-
-- name:                                 "SCR Log Function [object/retrieve] - Download JSON from Azure"
-  ansible.builtin.command: >-
-    az storage blob download
-    --account-name  {{ scr_azure_storage_account }}
-    --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_objectstore_prefix }}{{ payload_message }}.json
-    --file          {{ scr_log_function_log_dir }}/_retrieve_{{ payload_message }}.json
-    --overwrite
-    --auth-mode     login
-  delegate_to:                          localhost
-  changed_when:                         false
-  when:                                 action == "retrieve"
-
-- name:                                 "SCR Log Function [object/retrieve] - Load JSON into {{ result_var }}"
+# | INITIALIZE                                                                 |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: ALL
+- name:                                 "SCR Log Function [object/{{ action }}] - Normalize payload_message into a list (string OR list)"
   ansible.builtin.set_fact:
-    "{{ result_var }}":                 "{{ lookup('file', scr_log_function_log_dir + '/_retrieve_' + payload_message + '.json') | from_json }}"
+    _payload_names: >-
+      {{
+        payload_message
+        if (payload_message is sequence and payload_message is not string)
+        else [payload_message]
+      }}
   delegate_to:                          localhost
+  tags:
+    - silent_v1
+# endregion
+
+# /*---------------------------------------------------------------------------8
+# |  DOWNLOAD — download blob and load JSON into a named variable              |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: ALL
+- name:
+  block:
+
+    - name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Download JSON from Azure"
+      ansible.builtin.command: >-
+                                            az storage blob download
+                                              --account-name   {{ scr_azure_storage_account }}
+                                              --container-name {{ scr_azure_container }}
+                                              --name           {{ scr_log_function_objectstore_blob }}
+                                              --file           {{ scr_log_function_log_dir }}/_retrieve_object_store.json
+                                              --overwrite
+                                              --auth-mode      login
+      delegate_to:                          localhost
+      changed_when:                         false
+      register:                             blob_download
+      failed_when:                      
+                                            - blob_download is false
+                                            - "'BlobNotFound' not in (blob_download.stderr | default(''))"
+
+    - name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Load JSON into _object_store "
+      ansible.builtin.set_fact:
+        _object_store:                      "{{ lookup('file',
+                                                        scr_log_function_log_dir + '/_retrieve_object_store.json',
+                                                        errors='ignore')
+                                                | default('{}', true) 
+                                                | from_json }}"
+      delegate_to:                          localhost
+
+  tags:
+    - silent_v1
+
+# endregion
+
+# /*---------------------------------------------------------------------------8
+# |  RETRIEVE — Promote specific JSON key to fact                              |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: retrieve
+- name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Promote specific JSON key to fact"
+  block:
+
+    # Each item in _payload_names can be either:
+    #   "fact_name"              → sets fact on localhost (current delegate)
+    #   "fact_name, hostname"    → sets fact on the specified host via delegate_facts
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Promote specific JSON key to fact"
+      ansible.builtin.set_fact:
+        "{{ _fact_name }}":             "{{ _object_store[_fact_name] }}"
+      loop:                             "{{ _payload_names }}"
+      delegate_to:                      "{{ _fact_host if _fact_host else 'localhost' }}"
+      delegate_facts:                   "{{ true if _fact_host else false }}"
+      vars:
+        _fact_parts:                    "{{ item.split(',') }}"
+        _fact_name:                     "{{ _fact_parts[0] | trim }}"
+        _fact_host:                     "{{ _fact_parts[1] | trim if _fact_parts | length > 1 else '' }}"
+      when:                             _fact_name in _object_store
+
   when:                                 action == "retrieve"
+  tags:
+    - silent_v1
+# endregion
 
 
 # /*---------------------------------------------------------------------------8
-# |  DELETE — remove blob(s) from Azure                                       |
-# +------------------------------------4--------------------------------------*/
+# |  STORE / UPDATE — serialize fact(s) to JSON and upload                     |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: store/update
+- name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Upsert fact(s) into object store (merge with existing blob if update, otherwise overwrite)"
+  block:
 
-- name:                                 "SCR Log Function [object/delete] - Delete blob from Azure"
-  ansible.builtin.command: >-
-    az storage blob delete
-    --account-name  {{ scr_azure_storage_account }}
-    --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_objectstore_prefix }}{{ item }}.json
-    --auth-mode     login
-  loop:                                 "{{ [payload_message] | flatten }}"
-  delegate_to:                          localhost
-  changed_when:                         true
+    # Each item in _payload_names can be either:
+    #   "fact_name"              → resolves from current vars (hostvars of current host)
+    #   "fact_name, hostname"    → resolves from hostvars[hostname][fact_name]
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Build update object from the named facts"
+      ansible.builtin.set_fact:
+        _payload_updates:               "{{ _payload_updates | default({})
+                                            | combine({
+                                                (_fact_name):
+                                                  hostvars[_fact_host][_fact_name]
+                                                  if _fact_host
+                                                  else vars[_fact_name]
+                                              }) }}"
+      loop:                             "{{ _payload_names }}"
+      delegate_to:                      localhost
+      vars:
+        _fact_parts:                    "{{ item.split(',') }}"
+        _fact_name:                     "{{ _fact_parts[0] | trim }}"
+        _fact_host:                     "{{ _fact_parts[1] | trim if _fact_parts | length > 1 else '' }}"
+      when:                             >-
+        (_fact_host != '' and hostvars[_fact_host][_fact_name] is defined)
+        or
+        (_fact_host == '' and vars[_fact_name] is defined)
+
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Merge existing + updates (updates win on key collisions)"
+      ansible.builtin.set_fact:
+        _object_store:                  "{{ _object_store | combine(_payload_updates, recursive=false) }}"
+      delegate_to:                      localhost
+
+  when:                                 action in ['store', 'update']
+  tags:
+    - silent_v1
+# endregion
+
+
+# /*---------------------------------------------------------------------------8
+# |  DELETE — remove blob(s) from Azure                                        |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: delete
+- name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Remove one key from payload dict"
+  block:
+
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Remove one key from payload dict"
+      ansible.builtin.set_fact:
+        _object_store:                  "{{ _object_store
+                                            | dict2items
+                                            | rejectattr('key', 'eq', item)
+                                            | items2dict }}"
+      loop:                             "{{ _payload_names }}"
+      delegate_to:                      localhost
+      changed_when:                     true
+
   when:                                 action == "delete"
+  tags:
+    - silent_v1
+# endregion
+
+
+# /*---------------------------------------------------------------------------8
+# |  WRITE OBJECT_STORE — Write updated object store to file and upload to     |
+# |                       Azure                                                |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: store/update/delete
+- name:                                 "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Write updated object store to file and upload to Azure"
+  block:
+
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Write fact to JSON file"
+      ansible.builtin.copy:
+        dest:                           "{{ scr_log_function_log_dir }}/{{ scr_log_function_objectstore_file }}"
+        content:                        "{{ _object_store | to_nice_json(indent=2, sort_keys=True) }}\n"
+        mode:                           "0644"
+      delegate_to:                      localhost
+
+    - name:                             "SCR Log Function [object/{{ action }}/({{ payload_message }})] - Upload JSON file to Azure"
+      ansible.builtin.command: >-
+                                        az storage blob upload
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_objectstore_blob }}
+                                          --file           {{ scr_log_function_local_objectstore }}
+                                          --overwrite
+                                          --auth-mode     login
+      delegate_to:                      localhost
+      changed_when:                     true
+
+  when:                                 action in ['store', 'update', 'delete']
+  tags:
+    - silent_v1
+# endregion
+
+
+# /*---------------------------------------------------------------------------8
+# |  CLEANUP — remove temporary files                                          |
+# +------------------------------------4---------------------------------------*/
+# region: OPERATION: ALL
+- name:                                 "SCR Log Function [object/cleanup] - Cleanup temporary files and reset facts"
+  block:
+
+    - name:                             "SCR Log Function [object/cleanup] - Set facts to null"
+      ansible.builtin.set_fact:
+        "{{ item }}":                   null
+      loop:
+                                        - _payload_names
+                                        - _payload_updates
+                                        - _object_store
+      delegate_to:                      localhost
+      changed_when:                     true
+
+    - name:                             "SCR Log Function [object/cleanup] - Remove file (delete file)"
+      ansible.builtin.file:
+        path:                           "{{ item }}"
+        state:                          absent
+      loop:
+                                        - "{{ scr_log_function_local_objectstore }}"
+                                        - "{{ scr_log_function_log_dir }}/_retrieve_object_store.json"
+      delegate_to:                      localhost
+
+  tags:
+    - silent_v1
+# endregion
