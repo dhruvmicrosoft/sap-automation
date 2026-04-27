@@ -49,11 +49,11 @@
 - name:                                 "SCR Log Function [object/{{ action }}] - Normalize payload_message into a list (string OR list)"
   ansible.builtin.set_fact:
     _payload_names: >-
-      {{
-        payload_message
-        if (payload_message is sequence and payload_message is not string)
-        else [payload_message]
-      }}
+                                        {{
+                                          payload_message
+                                          if (payload_message is sequence and payload_message is not string)
+                                          else [payload_message]
+                                        }}
   delegate_to:                          localhost
   tags:
     - silent_v1

@@ -63,8 +63,22 @@
                                         {{ (hostvars['localhost']['scr_missing_on_target'] | map('replace', '__SID__', scr_source_sid) | list) +
                                            (hostvars['localhost']['scr_changed']           | map('replace', '__SID__', scr_source_sid) | list) }}
 
-# TODO: FILE_STORE: Store archive
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Store archive in FILE_STORE                                                |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                 "SCR: store archive in FILE_STORE"
+  ansible.builtin.include_role:
+    name:                               roles-scr/scr_log_function
+  vars:
+    activity:                           file
+    action:                             store
+    payload_message:                    "/tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz"
+  run_once:                             true
+
 # TODO: OBJ_STORE: Update step status to 'completed' for archive step
+# TODO: cleanup file from OS after upload to FILE_STORE to save space on the source system, especially if the archive file is large. This can be done with an ansible.builtin.file task to remove the local archive file after it has been successfully uploaded to the FILE_STORE.
 
   when: >
                                         ((progress | default([]))

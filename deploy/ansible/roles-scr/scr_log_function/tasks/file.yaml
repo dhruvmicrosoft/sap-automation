@@ -41,14 +41,14 @@
 - name:                                 "SCR Log Function [file/{{ action }}] - Normalize payload_message into a list (string OR list)"
   ansible.builtin.set_fact:
     _payload_files: >-
-      {{
-        payload_message
-        if (payload_message is sequence and payload_message is not string)
-        else [payload_message]
-      }}
+                                        {{
+                                          payload_message
+                                          if (payload_message is sequence and payload_message is not string)
+                                          else [payload_message]
+                                        }}
   delegate_to:                          localhost
-  tags:
-    - silent_v1
+  # tags:
+  #   - silent_v1
 # endregion
 
 
@@ -61,20 +61,27 @@
 
     - name:                             "SCR Log Function [file/{{ action }}] - Upload file to Azure"
       ansible.builtin.command: >-
-        az storage blob upload
-        --account-name   {{ scr_azure_storage_account }}
-        --container-name {{ scr_azure_container }}
-        --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
-        --file           {{ item }}
-        --overwrite
-        --auth-mode      login
+                                        az storage blob upload
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_filestore_prefix }}/{{ _file_name | basename }}
+                                          --file           {{ _file_name }}
+                                          --overwrite
+                                          --auth-mode      login
+      # loop:                             "{{ _payload_files }}"
+      # delegate_to:                      localhost
+      # changed_when:                     true
       loop:                             "{{ _payload_files }}"
-      delegate_to:                      localhost
-      changed_when:                     true
+      delegate_to:                      "{{ _file_host if _file_host else inventory_hostname }}"
+      delegate_facts:                   "{{ true if _file_host else false }}"
+      vars:
+        _file_parts:                    "{{ item.split(',') }}"
+        _file_name:                     "{{ _file_parts[0] | trim }}"
+        _file_host:                     "{{ _file_parts[1] | trim if _file_parts | length > 1 else '' }}"
 
   when:                                 action in ['store', 'update']
-  tags:
-    - silent_v1
+  # tags:
+  #   - silent_v1
 # endregion
 
 
@@ -87,20 +94,24 @@
 
     - name:                             "SCR Log Function [file/retrieve] - Download file from Azure"
       ansible.builtin.command: >-
-        az storage blob download
-        --account-name   {{ scr_azure_storage_account }}
-        --container-name {{ scr_azure_container }}
-        --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
-        --file           {{ result_path | default(scr_log_function_log_dir) }}/{{ item | basename }}
-        --overwrite
-        --auth-mode      login
+                                        az storage blob download
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_filestore_prefix }}/{{ _file_name | basename }}
+                                          --file           {{ result_path | default(scr_log_function_log_dir) }}/{{ _file_name | basename }}
+                                          --overwrite
+                                          --auth-mode      login
       loop:                             "{{ _payload_files }}"
-      delegate_to:                      localhost
+      delegate_to:                      "{{ _file_host if _file_host else inventory_hostname }}"
       changed_when:                     false
+      vars:
+        _file_parts:                    "{{ item.split(',') }}"
+        _file_name:                     "{{ _file_parts[0] | trim }}"
+        _file_host:                     "{{ _file_parts[1] | trim if _file_parts | length > 1 else '' }}"
 
   when:                                 action == "retrieve"
-  tags:
-    - silent_v1
+  # tags:
+  #   - silent_v1
 # endregion
 
 
@@ -113,18 +124,22 @@
 
     - name:                             "SCR Log Function [file/delete] - Delete file from Azure"
       ansible.builtin.command: >-
-        az storage blob delete
-        --account-name   {{ scr_azure_storage_account }}
-        --container-name {{ scr_azure_container }}
-        --name           {{ scr_log_function_filestore_prefix }}/{{ item | basename }}
-        --auth-mode      login
+                                        az storage blob delete
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_filestore_prefix }}/{{ _file_name | basename }}
+                                          --auth-mode      login
       loop:                             "{{ _payload_files }}"
-      delegate_to:                      localhost
+      delegate_to:                      "{{ _file_host if _file_host else 'localhost' }}"
       changed_when:                     true
+      vars:
+        _file_parts:                    "{{ item.split(',') }}"
+        _file_name:                     "{{ _file_parts[0] | trim }}"
+        _file_host:                     "{{ _file_parts[1] | trim if _file_parts | length > 1 else '' }}"
 
   when:                                 action == "delete"
-  tags:
-    - silent_v1
+  # tags:
+  #   - silent_v1
 # endregion
 
 

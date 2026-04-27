@@ -68,11 +68,45 @@
     file:                               roles-scr/scr_log_function/tasks/log_detail.yaml
   when:                                 activity == "log_detail"
 
+# /*---------------------------------------------------------------------------8
+# activity: object
+# action:   store | retrieve | update | delete
+#
+# payload_message supports the following call patterns:
+# The optional host value identifies the host context where the fact
+# will be found. If omitted, the current host is used.
+#
+# 1) Single fact reference (optional host override)
+#    payload_message: fact_name
+#    payload_message: fact_name, host_name
+#
+# 2) Multiple fact references (each entry can include an optional host)
+#    payload_message:
+#      - fact_name1
+#      - fact_name2, host2
+# +------------------------------------4--------------------------------------*/
 - name:                                 "SCR Log Function - Route: object / {{ action }}"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/object.yaml
   when:                                 activity == "object"
 
+# /*---------------------------------------------------------------------------8
+# activity: file
+# action:   store | retrieve | update | delete
+#
+# payload_message supports the following call patterns:
+# The optional host value identifies the host context where the fact
+# will be found. If omitted, the current host is used.
+#
+# 1) Single file reference (optional host override)
+#    payload_message: file_name
+#    payload_message: file_name, host_name
+#
+# 2) Multiple file references (each entry can include an optional host)
+#    payload_message:
+#      - file_name1
+#      - file_name2, host2
+# +------------------------------------4--------------------------------------*/
 - name:                                 "SCR Log Function - Route: file / {{ action }}"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/file.yaml
