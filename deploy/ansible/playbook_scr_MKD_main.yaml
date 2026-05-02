@@ -65,6 +65,18 @@
     # - name:
     #   include_tasks:                    tasks/scr_sap_kernel.yaml
 
+    - name:                             "LOG - STEP [KERNEL-SAP-SYNC]: SAP kernel synchronization completed"  # noqa: run-once[task]
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       log_summary
+        action:                         store
+        payload:                "STEP [KERNEL-SAP-SYNC] : SAP kernel synchronization completed — {{ inventory_hostname }}"
+        sapsid:                         "{{ scr_dest_sid }}"
+      # run_once:                         true
+      tags:                             [kernel]
+      when:                             
+        - (sapsid | upper + '_PAS') in vars['group_names']
 
 
     - ansible.builtin.set_fact:
@@ -76,8 +88,8 @@
       include_role:
         name:                           roles-scr/scr_kernel
       vars:
-        function:                       "sync"                                                      #
         kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+        function:                       "sync"                                                      #
         sapsid:                         "{{ scr_dest_sid }}"                                        # SID
       when:                             
         - (sapsid | upper + '_PAS') in vars['group_names'] or

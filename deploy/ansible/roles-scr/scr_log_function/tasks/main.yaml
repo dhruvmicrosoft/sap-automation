@@ -7,7 +7,7 @@
 # Required vars (set by caller):
 #   activity:        log_summary | log_detail | object | file
 #   action:          store | retrieve | update | delete
-#   payload_message: string, list of strings, fact name(s), or file path(s)
+#   payload: string, list of strings, fact name(s), or file path(s)
 #
 # Optional vars:
 #   result_var:   variable name to register retrieved data (object/file retrieve)
@@ -70,16 +70,16 @@
 # activity: object
 # action:   store | retrieve | update | delete
 #
-# payload_message supports the following call patterns:
+# payload supports the following call patterns:
 # The optional host value identifies the host context where the fact
 # will be found. If omitted, the current host is used.
 #
 # 1) Single fact reference (optional host override)
-#    payload_message: fact_name
-#    payload_message: fact_name, host_name
+#    payload: fact_name
+#    payload: fact_name, host_name
 #
 # 2) Multiple fact references (each entry can include an optional host)
-#    payload_message:
+#    payload:
 #      - fact_name1
 #      - fact_name2, host2
 # +------------------------------------4--------------------------------------*/
@@ -92,16 +92,16 @@
 # activity: file
 # action:   store | retrieve | update | delete
 #
-# payload_message supports the following call patterns:
+# payload supports the following call patterns:
 # The optional host value identifies the host context where the fact
 # will be found. If omitted, the current host is used.
 #
 # 1) Single file reference (optional host override)
-#    payload_message: file_name
-#    payload_message: file_name, host_name
+#    payload: file_name
+#    payload: file_name, host_name
 #
 # 2) Multiple file references (each entry can include an optional host)
-#    payload_message:
+#    payload:
 #      - file_name1
 #      - file_name2, host2
 # +------------------------------------4--------------------------------------*/

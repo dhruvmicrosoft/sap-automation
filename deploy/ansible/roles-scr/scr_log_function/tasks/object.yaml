@@ -7,7 +7,7 @@
 # Supported actions: store | retrieve | update | delete
 #
 # vars:
-#   payload_message:  fact name (string) or list of fact names
+#   payload:  fact name (string) or list of fact names
 #   result_var:       variable name to register retrieved data (retrieve only)
 #
 # Blob path: scr-runs/<run_id>/objectstore/<fact_name>.json
@@ -19,8 +19,8 @@
 # Delete      ✔       ✔     ✔
 #
 # where:
-#   single  = payload_message is a string representing a single fact name (e.g. "my_fact")
-#   multi   = payload_message is a list of strings representing multiple fact names (e.g. ["fact_one", "fact_two"])
+#   single  = payload is a string representing a single fact name (e.g. "my_fact")
+#   multi   = payload is a list of strings representing multiple fact names (e.g. ["fact_one", "fact_two"])
 #   complex = a dictionary of dictionaries and lists
 #
 # Notes:
@@ -33,7 +33,7 @@
 # - name:                                 "SCR Log Function [object/{{ action }}] -----DEBUGGING-----"
 #   ansible.builtin.debug:
 #     msg: |
-#                                         payload_message:      {{ payload_message      | default('undefined') }}
+#                                         payload:      {{ payload      | default('undefined') }}
 #                                         action:               {{ action               | default('undefined') }}
 #                                         _object_store:        {{ _object_store        | default('undefined') }}
 #                                         _payload_names:       {{ _payload_names       | default('undefined') }}
@@ -46,13 +46,13 @@
 # | INITIALIZE                                                                 |
 # +------------------------------------4---------------------------------------*/
 # region: OPERATION: ALL
-- name:                                 "SCR Log Function [object/{{ action }}] - Normalize payload_message into a list (string OR list)"
+- name:                                 "SCR Log Function [object/{{ action }}] - Normalize payload into a list (string OR list)"
   ansible.builtin.set_fact:
     _payload_names: >-
                                         {{
-                                          payload_message
-                                          if (payload_message is sequence and payload_message is not string)
-                                          else [payload_message]
+                                          payload
+                                          if (payload is sequence and payload is not string)
+                                          else [payload]
                                         }}
   delegate_to:                          localhost
   tags:

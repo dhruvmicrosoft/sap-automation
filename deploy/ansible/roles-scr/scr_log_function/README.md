@@ -15,7 +15,7 @@ Call this role from anywhere in a playbook or included task file to append a log
   vars:
     activity:                           log_summary | log_detail | object | file
     action:                             store | retrieve | update | delete
-    payload_message:                    "string"   # or a list
+    payload:                    "string"   # or a list
   run_once:                             true       # add when running in a multi-host play
 ```
 
@@ -23,7 +23,7 @@ Call this role from anywhere in a playbook or included task file to append a log
 
 ## Activities and Actions
 
-| Activity | Actions | `payload_message` | Notes |
+| Activity | Actions | `payload` | Notes |
 |---|---|---|---|
 | `index` | `register` `update` | register → dict `{ activity, source_sid, dest_sid }` / update → status string | Manages the global run index; `register` sets `scr_run_id` fact |
 | `log_summary` | `store` | string or list of strings | Appends timestamped line(s) to `<run_id>_summary.log` and re-uploads it |
@@ -68,8 +68,8 @@ host = [localhost] if host is not specified, it defaults to the play host.
         activity:                       file
         action:                         store
         action:                         update
-        payload_message:                /tmp/FILE1
-        payload_message:
+        payload:                /tmp/FILE1
+        payload:
                                         - /tmp/FILE1
                                         - /tmp/FILE2
                                         - /tmp/FILE3
@@ -89,8 +89,8 @@ host = [localhost] if host is not specified, it defaults to the play host.
       vars:
         activity:                       file
         action:                         retrieve
-        payload_message:                FILE1
-        payload_message:
+        payload:                FILE1
+        payload:
                                         - FILE1
                                         - /path/FILE2, localhost
                                         - FILE3
@@ -107,8 +107,8 @@ removes file from FILE_STORE and the metadata from the file_store fact
       vars:
         activity:                       file
         action:                         delete
-        payload_message:                /tmp/FILE1
-        payload_message:
+        payload:                /tmp/FILE1
+        payload:
                                         - /tmp/FILE1
                                         - /tmp/FILE2
                                         - /tmp/FILE3
@@ -129,7 +129,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           index
     action:                             register
-    payload_message:
+    payload:
       activity:                         SCR
       source_sid:                       "{{ scr_source_sid }}"
       dest_sid:                         "{{ scr_dest_sid }}"
@@ -145,7 +145,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           index
     action:                             update
-    payload_message:                    "Completed-Success"   # or Aborted / Completed-Failed
+    payload:                    "Completed-Success"   # or Aborted / Completed-Failed
   run_once:                             true
 ```
 --------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           log_summary
     action:                             store
-    payload_message:                    "Starting SAP Kernel Compare"
+    payload:                    "Starting SAP Kernel Compare"
   run_once:                             true
 ```
 
@@ -185,7 +185,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           log_summary
     action:                             store
-    payload_message:
+    payload:
       - "STEP 4 : Discovery completed"
       - "Source  : {{ scr_source_sid }}"
       - "Target  : {{ scr_dest_sid }}"
@@ -216,7 +216,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           object
     action:                             store
-    payload_message:                    scr_kernel_sync_state
+    payload:                    scr_kernel_sync_state
   run_once:                             true
 ```
 
@@ -228,7 +228,7 @@ removes file from FILE_STORE and the metadata from the file_store fact
   vars:
     activity:                           object
     action:                             retrieve
-    payload_message:                    scr_kernel_sync_state
+    payload:                    scr_kernel_sync_state
     result_var:                         loaded_sync_state
   run_once:                             true
 ```

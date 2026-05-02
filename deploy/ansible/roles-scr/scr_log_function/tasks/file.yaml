@@ -6,7 +6,7 @@
 # Supported actions: store | retrieve | update | delete
 #
 # vars:
-#   payload_message:  file path (string) or list of file paths
+#   payload:  file path (string) or list of file paths
 #   result_path:      local directory to download files into (retrieve only)
 #                     defaults to scr_log_function_local_log_dir
 #
@@ -19,8 +19,8 @@
 # Delete      ✔       ✔
 #
 # where:
-#   single  = payload_message is a string representing a single file path (e.g. "/tmp/myfile.txt")
-#   multi   = payload_message is a list of file paths (e.g. ["/tmp/a.txt", "/tmp/b.txt"])
+#   single  = payload is a string representing a single file path (e.g. "/tmp/myfile.txt")
+#   multi   = payload is a list of file paths (e.g. ["/tmp/a.txt", "/tmp/b.txt"])
 
 
 # /*---------------------------------------------------------------------------8
@@ -37,13 +37,13 @@
     - silent_v1
 
 
-- name:                                 "SCR Log Function [file/{{ action }}] - Normalize payload_message into a list (string OR list)"
+- name:                                 "SCR Log Function [file/{{ action }}] - Normalize payload into a list (string OR list)"
   ansible.builtin.set_fact:
     _payload_files: >-
                                         {{
-                                          payload_message
-                                          if (payload_message is sequence and payload_message is not string)
-                                          else [payload_message]
+                                          payload
+                                          if (payload is sequence and payload is not string)
+                                          else [payload]
                                         }}
   delegate_to:                          localhost
   # tags:

@@ -8,9 +8,9 @@
 # Supported actions: store
 #
 # vars:
-#   payload_message:  string or list of strings            (default)
+#   payload:  string or list of strings            (default)
 #   payload_type:     message (default) | file_content
-#                     file_content — payload_message is a list of file paths;
+#                     file_content — payload is a list of file paths;
 #                     each file's raw content is appended under a header block.
 #
 # Blob path: scr-runs/<run_id>/logs/<run_id>_detail.log
@@ -31,7 +31,7 @@
     insertafter:                        EOF
     create:                             true
     mode:                               "0644"
-  loop:                                 "{{ [payload_message] | flatten }}"
+  loop:                                 "{{ [payload] | flatten }}"
   delegate_to:                          localhost
   when:                                 (payload_type | default('message')) == 'message'
 
@@ -43,7 +43,7 @@
     block:                              "{{ lookup('file', item) }}"
     create:                             true
     mode:                               "0644"
-  loop:                                 "{{ [payload_message] | flatten }}"
+  loop:                                 "{{ [payload] | flatten }}"
   delegate_to:                          localhost
   when:                                 (payload_type | default('message')) == 'file_content'
 

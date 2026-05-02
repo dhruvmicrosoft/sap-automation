@@ -65,7 +65,7 @@
       vars:
         activity:                       index
         action:                         register
-        payload_message:
+        payload:
           activity:                     SCR
           source_sid:                   "{{ scr_source_sid }}"
           dest_sid:                     "{{ scr_dest_sid }}"
@@ -106,7 +106,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 1 : Logging initialized"
+        payload:                "STEP 1 : Logging initialized"
       run_once:                         true
       tags:                             [logging]
 
@@ -148,7 +148,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 2 : Key Vault secrets retrieved"
+        payload:                "STEP 2 : Key Vault secrets retrieved"
       run_once:                         true
       tags:                             [secrets]
 
@@ -246,7 +246,7 @@
     #   vars:
     #     activity:                       log_summary
     #     action:                         store
-    #     payload_message: >-
+    #     payload: >-
     #       STEP 4 : Discovery
     #       {{ 'FAILED' if ((_source_discovery_result is defined and _source_discovery_result is failed)
     #                    or (_dest_discovery_result   is defined and _dest_discovery_result   is failed))
@@ -260,7 +260,7 @@
     #   vars:
     #     activity:                       log_summary
     #     action:                         store
-    #     payload_message:                "STEP 5 : Discovery reports fetched to controller"
+    #     payload:                "STEP 5 : Discovery reports fetched to controller"
     #   run_once:                         true
     #   tags:                             [fetch]
 
@@ -301,7 +301,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
+        payload:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
       run_once:                         true
       tags:                             [kernel]
 
@@ -322,7 +322,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 7 : SAP kernel comparison completed"
+        payload:                "STEP 7 : SAP kernel comparison completed"
       run_once:                         true
       tags:                             [kernel]
 
@@ -347,7 +347,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload_message:                "STEP 8 : Kernel sync report written — kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
+        payload:                "STEP 8 : Kernel sync report written — kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
       run_once:                         true
       tags:                             [kernel]
 
@@ -357,7 +357,7 @@
     #   ansible.builtin.include_role:
     #     name:                           roles-scr/scr_log_function
     #   vars:
-    #     payload_message:                "STEP 9 : Kernel sync state stored to objectstore — scr_kernel_sync_state.json"
+    #     payload:                "STEP 9 : Kernel sync state stored to objectstore — scr_kernel_sync_state.json"
     #     activity:                       log_summary
     #     action:                         store
     #   run_once:                         true
@@ -387,7 +387,7 @@
       vars:
         activity:                           file
         action:                             delete
-        payload_message:                    /tmp/MKDTEST.gz
+        payload:                    /tmp/MKDTEST.gz
       run_once:                             true
 
 
@@ -456,7 +456,7 @@
         activity:                       log_detail
         action:                         store
         payload_type:                   file_content
-        payload_message:                "{{ _scr_discovery_txt_files.files | map(attribute='path') | list }}"
+        payload:                "{{ _scr_discovery_txt_files.files | map(attribute='path') | list }}"
       run_once:                         true
       when:                             _scr_discovery_txt_files.files | length > 0
       tags:                             [fetch, upload]
@@ -468,7 +468,7 @@
         activity:                       log_detail
         action:                         store
         payload_type:                   file_content
-        payload_message:                "{{ scr_log_dir }}/kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
+        payload:                "{{ scr_log_dir }}/kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
       run_once:                         true
       tags:                             [fetch, upload]
 
@@ -481,7 +481,7 @@
       vars:
         activity:                       index
         action:                         update
-        payload_message:                "Completed-Success"
+        payload:                "Completed-Success"
       run_once:                         true
       tags:                             [cleanup]
 

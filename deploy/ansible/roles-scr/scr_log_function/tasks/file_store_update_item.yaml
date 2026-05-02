@@ -125,7 +125,7 @@
   vars:
     activity:                           object                                  # Only neccessary when including the Role, not neccessary when including the task directly. Included here for clarity and consistency in how we pass parameters in the Role
     action:                             retrieve
-    payload_message:                    file_store
+    payload:                    file_store
 
 
 - name:                                 "SCR Log Function [file/{{ action }}] - Update file_store"
@@ -148,7 +148,7 @@
   vars:
     activity:                           object                                  # Only neccessary when including the Role, not neccessary when including the task directly. Included here for clarity and consistency in how we pass parameters in the Role
     action:                             update
-    payload_message:                    file_store
+    payload:                    file_store
 # endregion
 
 

@@ -21,7 +21,7 @@
   vars:
     activity:                       index
     action:                         register
-    payload_message:
+    payload:
       activity:                     SCR
       source_sid:                   "{{ scr_source_sid }}"
       dest_sid:                     "{{ scr_dest_sid }}"
@@ -62,6 +62,6 @@
   vars:
     activity:                       log_summary
     action:                         store
-    payload_message:                "STEP 1 : Logging initialized"
+    payload:                "STEP 1 : Logging initialized"
   run_once:                         true
   tags:                             [logging]

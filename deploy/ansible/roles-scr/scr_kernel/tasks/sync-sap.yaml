@@ -10,64 +10,80 @@
 #   progress:       List of dictionaries tracking the status of each step in the process (inventory, compare, archive, upload, cleanup). This can be used for logging, debugging, and resuming the process if needed.
 
 
-
-# PROGRESS List of Dictionaries:
-#   - step:     string
-#     status:   not started | in progress | completed
-#     details:  string (optional, for logging or debugging purposes)
-# 
-# Example:
-#   progress:
-#     - step:     "inventory"
-#       status:   "completed"
-#       details:  "Inventory completed successfully with 100 files found."
-#     - step:     "compare"
-#       status:   "completed"
-#       details:  "Comparison completed successfully with 100 files found."
-#
-#   progress:
-#     - {step: "inventory",         status: "completed",         details: "Inventory completed successfully with 100 files found."}
-#     - {step: "compare",           status: "completed",         details: "Comparison completed successfully with 100 files found."}
-#     - {step: "archive",           status: "completed",         details: "Archive completed successfully with 100 files found."}
-#     - {step: "upload",            status: "completed",         details: "Upload completed successfully with 100 files found."}
-#     - {step: "cleanup",           status: "completed",         details: "Cleanup completed successfully with 100 files found."}
-
 ---
 # -------------------------------------+---------------------------------------8
 
+- debug:
+    msg: >
+      "SCR Kernel Sync: Starting synchronization of SAP Kernel files for SID {{ scr_dest_sid }}.
+      This will compare the kernel files between the source and destination systems, identify
+      any missing or changed files on the destination system, and synchronize those files from
+      the source to the destination system to ensure they are in sync. The progress of this
+      operation will be tracked in the 'progress' variable with status updates for each step of
+      the process."
+
 # TODO: STEP_CHECK:
-#  - Load Obect from store
-#  - Check if 'archive' step is already marked as completed
-#  - If completed, log "Archive step already completed. Skipping  archive step." and skip to the next step.
-#  - If not completed, log "Archive step not completed. Executing archive step." and proceed with the archive steps.
-
-- name:                                 "SCR Kernel: ({{ function | upper }}) Archive SAP Kernel for SID {{ sapsid }}"
-  block:
 
 
-# TODO: OBJ_STORE: Update step status to 'in progress' for archive step
-# TODO: OBJ_STORE: Load inventory results for source and target systems (if not already loaded) to get the list of files to archive
-#                   scr_missing should contain the list of files that are present in the source but missing in the target, which is what we want to archive and transfer to the target system for remediation.
-#                   scr_changed could also be included if we want to transfer files that are present in both systems but have different checksums (indicating they have changed and may need to be updated on the target system).
 
-    - name:                             "SCR KERNEL: ({{ function | upper }}) Create Archive SAP Kernel for SID {{ sapsid }}"
-      become:                           true                                                        # root permissions may be required to access certain files and directories
-      become_user:                      root                                                        # Run the archive task as root (or the user specified in ansible_user) to ensure we have the necessary permissions to access all files and directories in the SAP kernel directory structure
-      ansible.builtin.archive:
-        path:                           "{{ archive_files }}"
-        dest:                           "/tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz"
-        format:                         gz
-        force_archive:                  true                                                        # If the destination archive already exists, overwrite it with the new archive containing the current list of files to be archived. This ensures that we always have an up-to-date archive that reflects the current state of the source system's SAP kernel files, especially if this task is re-run after making changes to the source system or if the inventory results have changed.
-      vars:
-        # archive_files: >-
-        #                                 {{ (hostvars['localhost']['scr_missing_on_target'] | map('replace', '__SID__', scr_source_sid) | list) +
-        #                                    (hostvars['localhost']['scr_changed']           | map('replace', '__SID__', scr_source_sid) | list) }}
-        archive_files:
-                                        - /etc/hosts
-                                        - /etc/passwd
-                                        - /etc/group
-                                        - /etc/shadow
-                                        - /etc/sap_kernel_file_list.txt
+# flow:
+#   stop SAP
+#   ensure processes are stopped
+#   download archive
+#   extract archive
+#   remove files that are not present on source system (based on inventory and comparison results)
+#   log completion of synchronization step
+
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Get file_store object for metadata                                         |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+# region:
+# - name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Retrieve file_store from OBJECT_STORE"
+#   ansible.builtin.include_role:
+#     name:                               roles-scr/scr_log_function
+#   vars:
+#     activity:                           object
+#     action:                             retrieve
+#     payload:                    file_store
+# endregion
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Download archive from FILE_STORE                                           |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+# region:
+- name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Download archive from FILE_STORE"
+  ansible.builtin.include_role:
+    name:                               roles-scr/scr_log_function
+  vars:
+    activity:                           file
+    action:                             retrieve
+    payload:                    /tmp/.scr/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
+# endregion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # /*---------------------------------------------------------------------------8
@@ -75,26 +91,10 @@
 # | Store archive in FILE_STORE                                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
-    - name:                                 "SCR: store archive in FILE_STORE"
-      ansible.builtin.include_role:
-        name:                               roles-scr/scr_log_function
-      vars:
-        activity:                           file
-        action:                             store
-        payload_message:                    
-                                            - /tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
-                                            - /tmp/MKDTEST.gz
-                                            - /tmp/MKD.tst, localhost
 
-# TODO: OBJ_STORE: Update step status to 'completed' for archive step
+# TODO: OBJECT_STORE: Update step status to 'completed' for archive step
 # TODO: cleanup file from OS after upload to FILE_STORE to save space on the source system, especially if the archive file is large. This can be done with an ansible.builtin.file task to remove the local archive file after it has been successfully uploaded to the FILE_STORE.
 
-  when: >
-                                        ((progress | default([]))
-                                          | selectattr('step', 'equalto', 'archive')
-                                          | map(attribute='status')
-                                          | first
-                                          | default('')) != 'completed'
 
 
 

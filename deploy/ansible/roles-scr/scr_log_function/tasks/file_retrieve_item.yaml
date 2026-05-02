@@ -8,7 +8,7 @@
 
 # file retrieve payload format: file_to_retrieve, [localhost]
 #
-# payload_message:
+# payload:
 #   - FILE.gz                                  # delegates to the play host and places file in default local filestore directory
 #   - /path/FILE.gz                            # path is used as the files target location
 #   - FILE2.gz, localhost                      # delegates to the local controller and places file in default local filestore directory
@@ -43,7 +43,7 @@
   vars:
     activity:                           object                              # Only neccessary when including the Role, not neccessary when including the task directly. Included here for clarity and consistency in how we pass parameters in the Role
     action:                             retrieve
-    payload_message:                    file_store
+    payload:                    file_store
 # endregion
 
 

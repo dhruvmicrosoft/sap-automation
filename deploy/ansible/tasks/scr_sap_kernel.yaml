@@ -33,7 +33,7 @@
   vars:
     activity:                       log_summary
     action:                         store
-    payload_message:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
+    payload:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
   run_once:                         true
   tags:                             [kernel]
 
@@ -58,7 +58,7 @@
   vars:
     activity:                       log_summary
     action:                         store
-    payload_message:                "STEP 7 : SAP kernel comparison completed"
+    payload:                "STEP 7 : SAP kernel comparison completed"
   run_once:                         true
   tags:                             [kernel]
 

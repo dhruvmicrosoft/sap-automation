@@ -7,7 +7,7 @@
 # Supported actions: store
 #
 # vars:
-#   payload_message:  string or list of strings
+#   payload:  string or list of strings
 #
 # Blob path: scr-runs/<run_id>/logs/<run_id>_summary.log
 
@@ -26,7 +26,7 @@
     insertafter:                        EOF
     create:                             true
     mode:                               "0644"
-  loop:                                 "{{ [payload_message] | flatten }}"
+  loop:                                 "{{ [payload] | flatten }}"
   delegate_to:                          localhost
 
 - name:                                 "SCR Log Function [log_summary] - Upload summary log to Azure"

@@ -39,7 +39,7 @@
   vars:
     activity:                           log_summary
     action:                             store
-    payload_message:                    "Starting SAP Kernel Compare"
+    payload:                    "Starting SAP Kernel Compare"
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
@@ -127,7 +127,7 @@
   vars:
     activity:                           object
     action:                             store
-    payload_message:
+    payload:
                                         - scr_matches,           localhost
                                         - scr_missing_on_target, localhost
                                         - scr_changed,           localhost

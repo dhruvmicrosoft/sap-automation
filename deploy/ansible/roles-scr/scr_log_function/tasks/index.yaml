@@ -11,7 +11,7 @@
 #
 # vars:
 #   action:          register | update
-#   payload_message: register → dict { activity, source_sid, dest_sid }
+#   payload: register → dict { activity, source_sid, dest_sid }
 #                    update   → status string
 #                               (Active | Aborted | Completed-Success | Completed-Failed)
 #
@@ -95,9 +95,9 @@
       runs: >-
                                         {{ _scr_index.runs + [{
                                           'run_number': hostvars['localhost']['scr_run_id'] | int,
-                                          'activity':   payload_message.activity,
-                                          'source_sid': payload_message.source_sid,
-                                          'dest_sid':   payload_message.dest_sid,
+                                          'activity':   payload.activity,
+                                          'source_sid': payload.source_sid,
+                                          'dest_sid':   payload.dest_sid,
                                           'start_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ'),
                                           'end_date':   '',
                                           'status':     'Active'
@@ -126,7 +126,7 @@
       runs: >-
                                         {{ (_scr_index.runs | rejectattr('run_number', 'equalto', scr_run_id | int) | list)
                                           + [_scr_current_run | combine({
-                                              'status':   payload_message,
+                                              'status':   payload,
                                               'end_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
                                             })]
                                         }}

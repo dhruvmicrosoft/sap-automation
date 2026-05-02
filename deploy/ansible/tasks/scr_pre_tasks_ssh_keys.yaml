@@ -35,6 +35,6 @@
   vars:
     activity:                       log_summary
     action:                         store
-    payload_message:                "STEP 2 : Key Vault secrets retrieved"
+    payload:                "STEP 2 : Key Vault secrets retrieved"
   run_once:                         true
   tags:                             [secrets]

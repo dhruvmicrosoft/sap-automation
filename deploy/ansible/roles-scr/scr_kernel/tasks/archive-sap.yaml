@@ -75,7 +75,7 @@
       vars:
         activity:                           file
         action:                             store
-        payload_message:                    /tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
+        payload:                    /tmp/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
 
 # TODO: OBJ_STORE: Update step status to 'completed' for archive step
 # TODO: cleanup file from OS after upload to FILE_STORE to save space on the source system, especially if the archive file is large. This can be done with an ansible.builtin.file task to remove the local archive file after it has been successfully uploaded to the FILE_STORE.
