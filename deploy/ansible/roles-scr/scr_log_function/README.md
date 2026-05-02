@@ -47,15 +47,81 @@ tfstate/
         ├── objectstore/
         │   └── <fact_name>.json          ← serialised Ansible facts (object store)
         └── filestore/
-            └── <filename>               ← on-demand files (file store)
+            └── <filename>                ← on-demand files (file store)
 ```
 
 ---
 
 ## Examples
 
-### Register a new SCR run (sets `scr_run_id`)
+### Activity:   file
 
+#### store/update file in FILE_STORE
+payload:  file, [host]
+host = [localhost] if host is not specified, it defaults to the play host.
+
+```yaml
+    - name:                             "SCR: delete archive(s) from FILE_STORE"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       file
+        action:                         store
+        action:                         update
+        payload_message:                /tmp/FILE1
+        payload_message:
+                                        - /tmp/FILE1
+                                        - /tmp/FILE2
+                                        - /tmp/FILE3
+      run_once:                         true
+```
+
+
+#### Retrieve file from FILE_STORE
+payload:  file, [localhost]
+file = path to write file and filename. if no path is provided a default of scr_log_function_local_filestore_dir is used
+host = [localhost] if host is not specified, it defaults to the play host.
+
+```yaml
+    - name:                             "SCR: delete archive(s) from FILE_STORE"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       file
+        action:                         retrieve
+        payload_message:                FILE1
+        payload_message:
+                                        - FILE1
+                                        - /path/FILE2, localhost
+                                        - FILE3
+      run_once:                         true
+```
+
+
+#### Delete file from FILE_STORE
+removes file from FILE_STORE and the metadata from the file_store fact
+```yaml
+    - name:                             "SCR: delete archive(s) from FILE_STORE"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       file
+        action:                         delete
+        payload_message:                /tmp/FILE1
+        payload_message:
+                                        - /tmp/FILE1
+                                        - /tmp/FILE2
+                                        - /tmp/FILE3
+      run_once:                         true
+```
+--------------------------------------------------------------------------------
+
+
+
+
+### Activity:   index
+
+#### Register a new SCR run (sets `scr_run_id`)
 ```yaml
 - name:                                 "LOG - Register SCR run"
   ansible.builtin.include_role:
@@ -70,8 +136,8 @@ tfstate/
   run_once:                             true
 ```
 
-### Mark a run complete (or aborted)
 
+#### Mark a run complete (or aborted)
 ```yaml
 - name:                                 "LOG - Mark run completed"
   ansible.builtin.include_role:
@@ -82,9 +148,23 @@ tfstate/
     payload_message:                    "Completed-Success"   # or Aborted / Completed-Failed
   run_once:                             true
 ```
+--------------------------------------------------------------------------------
 
-### Append a summary log line
 
+
+
+
+### Activity:   initialize
+
+--------------------------------------------------------------------------------
+
+
+
+
+
+### Activity:   log_summary
+
+#### Append a summary log line
 ```yaml
 - name:                                 "LOG - Starting Compare"
   ansible.builtin.include_role:
@@ -96,8 +176,8 @@ tfstate/
   run_once:                             true
 ```
 
-### Append multiple lines at once
 
+#### Append multiple lines at once
 ```yaml
 - name:                                 "LOG - Discovery summary"
   ansible.builtin.include_role:
@@ -111,9 +191,24 @@ tfstate/
       - "Target  : {{ scr_dest_sid }}"
   run_once:                             true
 ```
+--------------------------------------------------------------------------------
 
-### Store a fact as a JSON blob
 
+
+
+
+### Activity:   log_detail
+
+--------------------------------------------------------------------------------
+
+
+
+
+
+
+### Activity:   object
+
+#### Store a fact as a JSON blob
 ```yaml
 - name:                                 "LOG - Store kernel sync state"
   ansible.builtin.include_role:
@@ -125,8 +220,7 @@ tfstate/
   run_once:                             true
 ```
 
-### Retrieve a fact back from Azure
-
+#### Retrieve a fact back from Azure
 ```yaml
 - name:                                 "LOG - Retrieve kernel sync state"
   ansible.builtin.include_role:
@@ -138,35 +232,10 @@ tfstate/
     result_var:                         loaded_sync_state
   run_once:                             true
 ```
+--------------------------------------------------------------------------------
 
-### Upload files to filestore
 
-```yaml
-- name:                                 "LOG - Store discovery reports"
-  ansible.builtin.include_role:
-    name:                               roles-scr/scr_log_function
-  vars:
-    activity:                           file
-    action:                             store
-    payload_message:
-      - "{{ scr_log_dir }}/scr_discovery_source.txt"
-      - "{{ scr_log_dir }}/scr_discovery_target.txt"
-  run_once:                             true
-```
 
-### Retrieve a file from filestore
-
-```yaml
-- name:                                 "LOG - Retrieve kernel report"
-  ansible.builtin.include_role:
-    name:                               roles-scr/scr_log_function
-  vars:
-    activity:                           file
-    action:                             retrieve
-    payload_message:                    "kernel_sync_report_X90_to_X91.log"
-    result_path:                        "/tmp/restore"
-  run_once:                             true
-```
 
 ---
 
@@ -193,11 +262,11 @@ scr_log_function/
 
 | Variable | Default | Description |
 |---|---|---|
-| `scr_log_function_log_dir` | `$HOME/scr/logs` | Local directory for log files on the controller |
+| `scr_log_function_local_log_dir` | `$HOME/scr/logs` | Local directory for log files on the controller |
 | `scr_log_function_index_blob` | `scr-runs/scr_global_index.json` | Fixed blob path for the global run index |
-| `scr_log_function_logs_prefix` | `scr-runs/<run_id>/logs/` | Blob prefix for summary and detail logs |
+| `scr_log_function_remote_log_dir` | `scr-runs/<run_id>/logs/` | Blob prefix for summary and detail logs |
 | `scr_log_function_objectstore_prefix` | `scr-runs/<run_id>/objectstore/` | Blob prefix for serialised Ansible facts |
-| `scr_log_function_filestore_prefix` | `scr-runs/<run_id>/filestore/` | Blob prefix for files |
+| `scr_log_function_remote_filestore_dir` | `scr-runs/<run_id>/filestore/` | Blob prefix for files |
 
 ### Required at runtime (from `scr_common` or `--extra-vars`)
 

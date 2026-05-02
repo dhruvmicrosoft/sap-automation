@@ -25,26 +25,24 @@
 
     - name:                             "SCR Log Function - Discover tfstate storage account in {{ scr_azure_resource_group }}"
       ansible.builtin.command: >-
-        az storage account list
-        --resource-group {{ scr_azure_resource_group }}
-        --query "[?contains(name, 'tfstate')].name | [0]"
-        --output tsv
+                                        az storage account list
+                                          --resource-group {{ scr_azure_resource_group }}
+                                          --query "[?contains(name, 'tfstate')].name | [0]"
+                                          --output tsv
       register:                         _scr_lf_storage_discovery
       delegate_to:                      localhost
-      run_once:                         true
+      # run_once:                         true
       changed_when:                     false
-      # when:                             scr_azure_storage_account is not defined
 
     - name:                             "SCR Log Function - Set scr_azure_storage_account from discovery"
       ansible.builtin.set_fact:
         scr_azure_storage_account:      "{{ _scr_lf_storage_discovery.stdout | trim }}"
       delegate_to:                      localhost
-      run_once:                         true
-      when:
-        # - scr_azure_storage_account is not defined
-        - _scr_lf_storage_discovery.stdout | trim | length > 0
+      # run_once:                         true
+      when:                             _scr_lf_storage_discovery.stdout | trim | length > 0
 
   when:                                 scr_azure_storage_account is not defined
+  # run_once:                             true
 
 
 # /*---------------------------------------------------------------------------8

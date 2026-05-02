@@ -1,23 +1,25 @@
 ---
 # defaults for scr_log_function role
-scr_log_function_objectstore_file:    "object_store.json"
-
-# Local directory for log files on the controller
-scr_log_function_log_dir:             "{{ scr_log_dir | default(ansible_env.HOME + '/scr/logs') }}"
-
-# Blob path prefixes inside the tfstate container
-#   logs/        → summary and detail log files (written by log_summary / log_detail)
-#   objectstore/ → Ansible facts serialised as JSON (written by object store/update)
-#   filestore/   → arbitrary files uploaded by the file activity
-scr_log_function_basedir:             "scr-runs/{{ scr_run_id | default('unknown') }}"
-scr_log_function_logs_prefix:         "{{ scr_log_function_basedir }}/logs"
-scr_log_function_filestore_prefix:    "{{ scr_log_function_basedir }}/filestore"
-
-scr_log_function_local_objectstore:   "{{ scr_log_function_log_dir }}/{{ scr_log_function_objectstore_file }}"
-scr_log_function_objectstore_blob:    "{{ scr_log_function_basedir }}/{{ scr_log_function_objectstore_file }}"
-
-# Global run index — fixed path, shared across all runs
-scr_log_function_index_blob:          "scr-runs/scr_global_index.json"
+scr_log_function_objectstore_file:        "object_store.json"
 
 
+# Local directory for log files on the controller and target systems
+scr_log_function_local_basedir:           "{{ scr_basedir }}"
+scr_log_function_local_log_dir:           "{{ scr_log_function_local_basedir }}/logs"
+scr_log_function_local_filestore_dir:     "{{ scr_log_function_local_basedir }}/FILE_STORE"
+scr_log_function_local_objectstore:       "{{ scr_log_function_local_basedir }}/{{ scr_log_function_objectstore_file }}"
+
+
+# Azure Storage account/container locations
+#   Global run index — fixed path, shared across all runs
+scr_log_function_index_blob:              "scr-runs/scr_global_index.json"
+
+#   Blob path prefixes inside the tfstate container
+#     logs/        → summary and detail log files (written by log_summary / log_detail)
+#     FILE_STORE/   → arbitrary files uploaded by the file activity
+#     OBJECT_STORE → Ansible facts stored in JSON object (written by object store/update)
+scr_log_function_remote_basedir:          "scr-runs/{{ scr_run_id | default('unknown') }}"
+scr_log_function_remote_log_dir:          "{{ scr_log_function_remote_basedir }}/logs"
+scr_log_function_remote_filestore_dir:    "{{ scr_log_function_remote_basedir }}/FILE_STORE"
+scr_log_function_remote_objectstore:      "{{ scr_log_function_remote_basedir }}/{{ scr_log_function_objectstore_file }}"
 

@@ -26,7 +26,7 @@
 
 - name:                                 "SCR Log Function [index] - Ensure log directory exists"
   ansible.builtin.file:
-    path:                               "{{ scr_log_function_log_dir }}"
+    path:                               "{{ scr_log_function_local_log_dir }}"
     state:                              directory
     mode:                               "0755"
   delegate_to:                          localhost
@@ -40,13 +40,13 @@
 
 - name:                                 "SCR Log Function [index] - Download global index"
   ansible.builtin.command: >-
-    az storage blob download
-    --account-name   {{ scr_azure_storage_account }}
-    --container-name {{ scr_azure_container }}
-    --name           {{ scr_log_function_index_blob }}
-    --file           {{ scr_log_function_log_dir }}/scr_global_index.json
-    --overwrite
-    --auth-mode      login
+                                        az storage blob download
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_index_blob }}
+                                          --file           {{ scr_log_function_local_log_dir }}/scr_global_index.json
+                                          --overwrite
+                                          --auth-mode      login
   delegate_to:                          localhost
   changed_when:                         false
   failed_when:                          _scr_index_download.rc not in [0, 3]
@@ -54,7 +54,7 @@
 
 - name:                                 "SCR Log Function [index] - Load index from file"
   ansible.builtin.set_fact:
-    _scr_index:                         "{{ lookup('file', scr_log_function_log_dir + '/scr_global_index.json') | from_json }}"
+    _scr_index:                         "{{ lookup('file', scr_log_function_local_log_dir + '/scr_global_index.json') | from_json }}"
   delegate_to:                          localhost
   when:                                 _scr_index_download.rc == 0
 
@@ -75,7 +75,7 @@
 
 - name:                                 "SCR Log Function [index/register] - Allocate run number and write to file"
   ansible.builtin.copy:
-    dest:                               "{{ scr_log_function_log_dir }}/.scr_run_id"
+    dest:                               "{{ scr_log_function_local_log_dir }}/.scr_run_id"
     content:                            "{{ '%04d' | format((_scr_index.last_run_number | int) + 1) }}"
     mode:                               "0644"
   delegate_to:                          localhost
@@ -83,7 +83,7 @@
 
 - name:                                 "SCR Log Function [index/register] - Set scr_run_id fact from file"
   ansible.builtin.set_fact:
-    scr_run_id:                         "{{ lookup('file', scr_log_function_log_dir + '/.scr_run_id') }}"
+    scr_run_id:                         "{{ lookup('file', scr_log_function_local_log_dir + '/.scr_run_id') }}"
   delegate_to:                          localhost
   delegate_facts:                       true
   when:                                 action == 'register'
@@ -93,15 +93,16 @@
     _scr_index_updated:
       last_run_number:                  "{{ hostvars['localhost']['scr_run_id'] | int }}"
       runs: >-
-        {{ _scr_index.runs + [{
-          'run_number': hostvars['localhost']['scr_run_id'] | int,
-          'activity':   payload_message.activity,
-          'source_sid': payload_message.source_sid,
-          'dest_sid':   payload_message.dest_sid,
-          'start_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ'),
-          'end_date':   '',
-          'status':     'Active'
-        }] }}
+                                        {{ _scr_index.runs + [{
+                                          'run_number': hostvars['localhost']['scr_run_id'] | int,
+                                          'activity':   payload_message.activity,
+                                          'source_sid': payload_message.source_sid,
+                                          'dest_sid':   payload_message.dest_sid,
+                                          'start_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ'),
+                                          'end_date':   '',
+                                          'status':     'Active'
+                                          }] 
+                                        }}
   delegate_to:                          localhost
   when:                                 action == 'register'
 
@@ -123,11 +124,12 @@
     _scr_index_updated:
       last_run_number:                  "{{ _scr_index.last_run_number }}"
       runs: >-
-        {{ (_scr_index.runs | rejectattr('run_number', 'equalto', scr_run_id | int) | list)
-           + [_scr_current_run | combine({
-               'status':   payload_message,
-               'end_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
-             })] }}
+                                        {{ (_scr_index.runs | rejectattr('run_number', 'equalto', scr_run_id | int) | list)
+                                          + [_scr_current_run | combine({
+                                              'status':   payload_message,
+                                              'end_date': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
+                                            })]
+                                        }}
   delegate_to:                          localhost
   when:                                 action == 'update'
 
@@ -140,7 +142,7 @@
 
 - name:                                 "SCR Log Function [index] - Write updated index locally"
   ansible.builtin.copy:
-    dest:                               "{{ scr_log_function_log_dir }}/scr_global_index.json"
+    dest:                               "{{ scr_log_function_local_log_dir }}/scr_global_index.json"
     content:                            "{{ _scr_index_updated | to_nice_json }}"
     mode:                               "0644"
   delegate_to:                          localhost
@@ -148,13 +150,13 @@
 
 - name:                                 "SCR Log Function [index] - Upload updated index to Azure"
   ansible.builtin.command: >-
-    az storage blob upload
-    --account-name   {{ scr_azure_storage_account }}
-    --container-name {{ scr_azure_container }}
-    --name           {{ scr_log_function_index_blob }}
-    --file           {{ scr_log_function_log_dir }}/scr_global_index.json
-    --overwrite
-    --auth-mode      login
+                                        az storage blob upload
+                                          --account-name   {{ scr_azure_storage_account }}
+                                          --container-name {{ scr_azure_container }}
+                                          --name           {{ scr_log_function_index_blob }}
+                                          --file           {{ scr_log_function_local_log_dir }}/scr_global_index.json
+                                          --overwrite
+                                          --auth-mode      login
   delegate_to:                          localhost
   changed_when:                         true
   when:                                 _scr_index_updated is defined

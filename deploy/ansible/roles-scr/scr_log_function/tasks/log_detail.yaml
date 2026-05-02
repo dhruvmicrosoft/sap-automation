@@ -18,7 +18,7 @@
 
 - name:                                 "SCR Log Function [log_detail] - Ensure log directory exists"
   ansible.builtin.file:
-    path:                               "{{ scr_log_function_log_dir }}"
+    path:                               "{{ scr_log_function_local_log_dir }}"
     state:                              directory
     mode:                               "0755"
   delegate_to:                          localhost
@@ -26,7 +26,7 @@
 # -- message mode (default) ---------------------------------------------------
 - name:                                 "SCR Log Function [log_detail] - Append message to detail log"
   ansible.builtin.lineinfile:
-    path:                               "{{ scr_log_function_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log"
+    path:                               "{{ scr_log_function_local_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log"
     line:                               "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] {{ item }}"
     insertafter:                        EOF
     create:                             true
@@ -38,7 +38,7 @@
 # -- file_content mode --------------------------------------------------------
 - name:                                 "SCR Log Function [log_detail] - Append file content to detail log"
   ansible.builtin.blockinfile:
-    path:                               "{{ scr_log_function_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log"
+    path:                               "{{ scr_log_function_local_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log"
     marker:                             "# {mark} {{ item | basename }}"
     block:                              "{{ lookup('file', item) }}"
     create:                             true
@@ -53,8 +53,8 @@
     az storage blob upload
     --account-name  {{ scr_azure_storage_account }}
     --container-name {{ scr_azure_container }}
-    --name          {{ scr_log_function_logs_prefix }}/{{ scr_run_id | default('scr') }}_detail.log
-    --file          {{ scr_log_function_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log
+    --name          {{ scr_log_function_remote_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log
+    --file          {{ scr_log_function_local_log_dir }}/{{ scr_run_id | default('scr') }}_detail.log
     --overwrite
     --auth-mode     login
   delegate_to:                          localhost
