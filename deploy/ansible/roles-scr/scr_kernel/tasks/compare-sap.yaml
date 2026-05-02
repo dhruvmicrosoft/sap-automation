@@ -40,7 +40,6 @@
     activity:                           log_summary
     action:                             store
     payload_message:                    "Starting SAP Kernel Compare"
-  run_once:                             true
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
@@ -126,14 +125,13 @@
   ansible.builtin.include_role:
     name:                               roles-scr/scr_log_function
   vars:
+    activity:                           object
+    action:                             store
     payload_message:
                                         - scr_matches,           localhost
                                         - scr_missing_on_target, localhost
                                         - scr_changed,           localhost
                                         - scr_extra_on_target,   localhost
-    activity:                           object
-    action:                             store
-  run_once:                             true
 
 
 # /*---------------------------------------------------------------------------8

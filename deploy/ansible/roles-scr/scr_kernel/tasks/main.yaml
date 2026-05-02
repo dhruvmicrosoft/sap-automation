@@ -8,11 +8,12 @@
 #   sapsid = SID
 # compare
 #   kernel = SAP or DB (HANA, Oracle, etc.)
-# archive
+# archive and store
 #   kernel = SAP or DB (HANA, Oracle, etc.)
 #   sapsid = SID
-# call store
-# call retrieve
+# retrieve and synchronize
+#   kernel = SAP or DB (HANA, Oracle, etc.)
+#   sapsid = SID (Target)
 # extract and process deltas (remove from target)
 # cleanup
 
@@ -53,13 +54,15 @@
         - function  == "compare"
         - kernel    == "sap"
 
+# TODO: DB
+
 
 # -------------------------------------+
 # Archive
 # -------------------------------------+
 - name:                                 "SCR Kernel: ({{ function | upper }}) Archive SAP Kernel for SID"
   ansible.builtin.include_tasks:
-    file:                               roles-scr/scr_kernel/tasks/archive.yaml
+    file:                               roles-scr/scr_kernel/tasks/archive-sap.yaml
   when:
         - function  is defined
         - kernel    is defined
@@ -67,5 +70,26 @@
         - kernel    == "sap"
         - (sapsid | upper + '_PAS') in vars['group_names']                                          # Run on SAP Application server
 
+# TODO: DB
 
+
+# -------------------------------------+
+# Synchronize
+# -------------------------------------+
+- name:                                 "SCR Kernel: ({{ function | upper }}) Synchronize SAP Kernel for SID"
+  ansible.builtin.include_tasks:
+    file:                               roles-scr/scr_kernel/tasks/sync-sap.yaml
+  when:
+        - function  is defined
+        - kernel    is defined
+        - function  == "sync"
+        - kernel    == "sap"
+        - (sapsid | upper + '_PAS') in vars['group_names']                                          # Run on SAP Application server
+
+# TODO: DB
+
+
+# /*---------------------------------------------------------------------------8
+# |                                   END                                      |
+# +------------------------------------4--------------------------------------*/
 ...
