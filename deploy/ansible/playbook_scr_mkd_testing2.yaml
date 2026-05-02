@@ -38,10 +38,6 @@
 # Added ansible-galaxy collection install of azure.azcollection to configure_deployer.sh.tmpl
 
   pre_tasks:
-    # -----------------------------------------------------------------------
-    # Step 1 — Gather controller datetime, create log dir, register this run
-    #          in the global index (sets scr_run_id), write summary log header.
-    # -----------------------------------------------------------------------
     - name:                             "Controller - Gather facts for timestamps"  # noqa: run-once[task]
       ansible.builtin.setup:
       delegate_to:                      localhost
@@ -169,100 +165,7 @@
 
 
 
-    # -----------------------------------------------------------------------
-    # Step 3a — Remove old discovery reports from each remote host's /tmp/.
-    #           Without this, previous run files would be fetched again and
-    #           appended a second time to the detail log.
-    # -----------------------------------------------------------------------
-    - name:                             "Host - Remove stale discovery reports from /tmp"
-      ansible.builtin.shell:            "rm -f /tmp/scr_discovery_*.txt /tmp/scr_discovery_*.md"
-      changed_when:                     false
-      tags:                             [discovery, fetch]
 
-
-    # -----------------------------------------------------------------------
-    # Step 4b — Discovery runs on each host independently and in parallel.
-    #           Results are written to /tmp/scr_discovery_*.txt on each host.
-    #           ignore_errors ensures one host failing doesn't block the rest.
-    # -----------------------------------------------------------------------
-    # - name:                             "Source - System Discovery"
-    #   ansible.builtin.include_role:
-    #     name:                           roles-scr/scr_system_discovery
-    #   vars:
-    #     scr_discovery_system_role:      "source"
-    #     scr_discovery_sid:              "{{ scr_source_sid }}"
-    #   when:
-    #     - (scr_source_sid | upper + '_PAS') in vars['group_names'] or
-    #       (scr_source_sid | upper + '_DB')  in vars['group_names']
-    #   ignore_errors:                    true
-    #   register:                         _source_discovery_result
-    #   tags:                             [discovery]
-
-
-    # - name:                             "Destination - System Discovery"
-    #   ansible.builtin.include_role:
-    #     name:                           roles-scr/scr_system_discovery
-    #   vars:
-    #     scr_discovery_system_role:      "target"
-    #     scr_discovery_sid:              "{{ scr_dest_sid }}"
-    #   when:
-    #     - (scr_dest_sid | upper + '_PAS') in vars['group_names'] or
-    #       (scr_dest_sid | upper + '_DB')  in vars['group_names']
-    #   ignore_errors:                    true
-    #   register:                         _dest_discovery_result
-    #   tags:                             [discovery]
-
-
-    # -----------------------------------------------------------------------
-    # Step 5b — Find and fetch discovery reports from each remote host.
-    #           Files land in scr_log_dir on the controller, named by host.
-    # -----------------------------------------------------------------------
-    # - name:                             "Host - Find discovery report files in /tmp"
-    #   ansible.builtin.find:
-    #     paths:                          "/tmp"
-    #     patterns:                       "scr_discovery_*.txt"
-    #   register:                         _scr_discovery_reports
-    #   tags:                             [fetch]
-
-
-    # - name:                             "Controller - Fetch each discovery report"
-    #   ansible.builtin.fetch:
-    #     src:                            "{{ item.path }}"
-    #     dest:                           "{{ scr_log_dir }}/scr_discovery_{{ inventory_hostname }}_{{ item.path | basename }}"
-    #     flat:                           true
-    #     fail_on_missing:                true
-    #   loop:                             "{{ _scr_discovery_reports.files }}"
-    #   when:                             _scr_discovery_reports.files | length > 0
-    #   tags:                             [fetch]
-
-
-    # -----------------------------------------------------------------------
-    # Step 5c — Append per-host discovery outcome to the main log.
-    #           Shows 'completed' or 'FAILED' so the log is self-describing.
-    # -----------------------------------------------------------------------
-    # - name:                             "LOG - STEP 4: Discovery result"
-    #   ansible.builtin.include_role:
-    #     name:                           roles-scr/scr_log_function
-    #   vars:
-    #     activity:                       log_summary
-    #     action:                         store
-    #     payload_message: >-
-    #       STEP 4 : Discovery
-    #       {{ 'FAILED' if ((_source_discovery_result is defined and _source_discovery_result is failed)
-    #                    or (_dest_discovery_result   is defined and _dest_discovery_result   is failed))
-    #          else 'completed' }} — {{ inventory_hostname }}
-    #   tags:                             [fetch]
-
-
-    # - name:                             "LOG - STEP 5: Discovery reports fetched"  # noqa: run-once[task]
-    #   ansible.builtin.include_role:
-    #     name:                           roles-scr/scr_log_function
-    #   vars:
-    #     activity:                       log_summary
-    #     action:                         store
-    #     payload_message:                "STEP 5 : Discovery reports fetched to controller"
-    #   run_once:                         true
-    #   tags:                             [fetch]
 
 
 
@@ -271,60 +174,60 @@
 # SAP KERNEL
 #
 # -------------------------------------+---------------------------------------8
-    - name:                             "Source - Inventory SAP Kernel Files for SID"
-      include_role:
-        name:                           roles-scr/scr_kernel
-      vars:
-        function:                       "inventory"                                                 #
-        kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
-        sapsid:                         "{{ scr_source_sid }}"                                      # SID
-      when:                             
-        - (sapsid | upper + '_PAS') in vars['group_names'] or
-          (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+    # - name:                             "Source - Inventory SAP Kernel Files for SID"
+    #   include_role:
+    #     name:                           roles-scr/scr_kernel
+    #   vars:
+    #     function:                       "inventory"                                                 #
+    #     kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+    #     sapsid:                         "{{ scr_source_sid }}"                                      # SID
+    #   when:                             
+    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
+    #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
 
 
-    - name:                             "Destination - Inventory SAP Kernel Files for SID"
-      include_role:
-        name:                           roles-scr/scr_kernel
-      vars:
-        function:                       "inventory"                                                 #
-        kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
-        sapsid:                         "{{ scr_dest_sid }}"                                        # SID
-      when:                             
-        - (sapsid | upper + '_PAS') in vars['group_names'] or
-          (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+    # - name:                             "Destination - Inventory SAP Kernel Files for SID"
+    #   include_role:
+    #     name:                           roles-scr/scr_kernel
+    #   vars:
+    #     function:                       "inventory"                                                 #
+    #     kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+    #     sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+    #   when:                             
+    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
+    #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
 
 
-    - name:                             "LOG - STEP 6: SAP kernel inventory completed"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_summary
-        action:                         store
-        payload_message:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
-      run_once:                         true
-      tags:                             [kernel]
+    # - name:                             "LOG - STEP 6: SAP kernel inventory completed"  # noqa: run-once[task]
+    #   ansible.builtin.include_role:
+    #     name:                           roles-scr/scr_log_function
+    #   vars:
+    #     activity:                       log_summary
+    #     action:                         store
+    #     payload_message:                "STEP 6 : SAP kernel inventory completed — {{ inventory_hostname }}"
+    #   run_once:                         true
+    #   tags:                             [kernel]
 
 
 # -------------------------------------+
-    - name:                             "Compare SAP Kernel Files for SID"
-      include_role:
-        name:                           roles-scr/scr_kernel
-      vars:
-        function:                       "compare"                                                   #
-        kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
-      run_once:                         true
+    # - name:                             "Compare SAP Kernel Files for SID"
+    #   include_role:
+    #     name:                           roles-scr/scr_kernel
+    #   vars:
+    #     function:                       "compare"                                                   #
+    #     kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+    #   run_once:                         true
 
 
-    - name:                             "LOG - STEP 7: SAP kernel comparison completed"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_summary
-        action:                         store
-        payload_message:                "STEP 7 : SAP kernel comparison completed"
-      run_once:                         true
-      tags:                             [kernel]
+    # - name:                             "LOG - STEP 7: SAP kernel comparison completed"  # noqa: run-once[task]
+    #   ansible.builtin.include_role:
+    #     name:                           roles-scr/scr_log_function
+    #   vars:
+    #     activity:                       log_summary
+    #     action:                         store
+    #     payload_message:                "STEP 7 : SAP kernel comparison completed"
+    #   run_once:                         true
+    #   tags:                             [kernel]
 
 
     # -----------------------------------------------------------------------
@@ -341,15 +244,15 @@
     #   run_once:                         true
     #   tags:                             [kernel]
 
-    - name:                             "LOG - STEP 8: Kernel sync report written"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_summary
-        action:                         store
-        payload_message:                "STEP 8 : Kernel sync report written — kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
-      run_once:                         true
-      tags:                             [kernel]
+    # - name:                             "LOG - STEP 8: Kernel sync report written"  # noqa: run-once[task]
+    #   ansible.builtin.include_role:
+    #     name:                           roles-scr/scr_log_function
+    #   vars:
+    #     activity:                       log_summary
+    #     action:                         store
+    #     payload_message:                "STEP 8 : Kernel sync report written — kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
+    #   run_once:                         true
+    #   tags:                             [kernel]
 
 
 # -------------------------------------+
@@ -381,51 +284,39 @@
 # -------------------------------------+---------------------------------------8
 
 
-    - name:                                 "SCR: delete archive from FILE_STORE"
+    # - name:                                 "SCR: delete archive from FILE_STORE"
+    #   ansible.builtin.include_role:
+    #     name:                               roles-scr/scr_log_function
+    #   vars:
+    #     activity:                           file
+    #     action:                             delete
+    #     payload_message:
+    #                                         - /tmp/X90_SAP_kernel_files.tar.gz
+    #                                         - /tmp/MKDTEST.gz
+    #                                         - /tmp/MKD.tst
+    #   run_once:                             true
+
+    - name:                             "SCR: retrieve archive from FILE_STORE"
       ansible.builtin.include_role:
-        name:                               roles-scr/scr_log_function
+        name:                           roles-scr/scr_log_function
       vars:
-        activity:                           file
-        action:                             delete
-        payload_message:                    /tmp/MKDTEST.gz
-      run_once:                             true
+        activity:                       file
+        action:                         retrieve
+        payload_message:                /tmp/X90_SAP_kernel_files.tar.gz
+        sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+      when:                             
+        - (sapsid | upper + '_PAS') in vars['group_names']
+
+
+
 
 
 
     - meta:         end_play
 
-# -------------------------------------+---------------------------------------8
-#
-# DATABASE KERNEL
-#
-# -------------------------------------+---------------------------------------8
-# Database in progress, but commenting out for now to focus on SAP inventory first. Will add back in once we have the DB inventory tasks fleshed out and tested.
-    # - name:                             "Source - Inventory Database Kernel Files for SID"
-    #   include_role:
-    #     name:                           roles-scr/scr_kernel
-    #   vars:
-    #     function:                       "inventory"                                                 #
-    #     kernel:                         "db"                                                        # sap or db (hana, oracle, etc.)
-    #     sapsid:                         "{{ scr_source_sid }}"                                      # SID
-    #   when:                             
-    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
-    #       (sapsid | upper + '_DB')  in vars['group_names']                  # source or destination groups
 
 
-    # - name:                                 "Test"
-    #   ansible.builtin.debug:
-    #     msg: |-
-    #                                     sapservices_path:           {{ sapservices_path     | default('-')  }}
-    #                                     sapservices_lines:          {{ sapservices_lines    | default('-') }}
-    #                                     sap_start_facility:         {{ sap_start_facility   | default('-') }}
-    #                                     sap_systemd_units:          {{ sap_systemd_units    | default('-') }}
-    #                                     sap_unit:                   {{ sap_unit             | default('-') }}
-    #                                     sap_pf:                     {{ sap_pf               | default('-') }}
-    #                                     sap_system_name:            {{ sap_system_name      | default('-') }}
-    #                                     sap_system:                 {{ sap_system           | default('-') }}
-    #                                     sap_instance_name:          {{ sap_instance_name    | default('-') }}
-    #     verbosity:                      0
-# -------------------------------------+---------------------------------------8
+
 
 
 
@@ -436,82 +327,38 @@
 # +------------------------------------4--------------------------------------*/
   post_tasks:
     # -----------------------------------------------------------------------
-    # Step 5 final — All hosts done; append discovery reports and kernel sync
-    #               report to the detail log.
-    # -----------------------------------------------------------------------
-    - name:                             "Controller - Find fetched discovery reports"  # noqa: run-once[task]
-      ansible.builtin.find:
-        paths:                          "{{ scr_log_dir }}"
-        patterns:                       "scr_discovery_*.txt"
-        recurse:                        false
-      register:                         _scr_discovery_txt_files
-      delegate_to:                      localhost
-      run_once:                         true
-      tags:                             [fetch, upload]
-
-    - name:                             "LOG - Append discovery reports to detail log"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_detail
-        action:                         store
-        payload_type:                   file_content
-        payload_message:                "{{ _scr_discovery_txt_files.files | map(attribute='path') | list }}"
-      run_once:                         true
-      when:                             _scr_discovery_txt_files.files | length > 0
-      tags:                             [fetch, upload]
-
-    - name:                             "LOG - Append kernel sync report to detail log"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_detail
-        action:                         store
-        payload_type:                   file_content
-        payload_message:                "{{ scr_log_dir }}/kernel_sync_report_{{ scr_source_sid }}_to_{{ scr_dest_sid }}.log"
-      run_once:                         true
-      tags:                             [fetch, upload]
-
-    # -----------------------------------------------------------------------
-    # Step 5 — Mark run complete in the global index.
-    # -----------------------------------------------------------------------
-    - name:                             "LOG - Mark run completed"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       index
-        action:                         update
-        payload_message:                "Completed-Success"
-      run_once:                         true
-      tags:                             [cleanup]
-
-    # -----------------------------------------------------------------------
     # Step 6 — Remove the temp SSH key files that scr_keys wrote to /tmp.
     # -----------------------------------------------------------------------
-    - name:                               "Source - Cleanup the SSH credential files from the OS"
-      ansible.builtin.include_role:
-        name:                             roles-scr/scr_keys
-      vars:
-        cleanup:                          true
-        function:                         "source"
-      when:                             
-        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
-          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
+    # - name:                               "Source - Cleanup the SSH credential files from the OS"
+    #   ansible.builtin.include_role:
+    #     name:                             roles-scr/scr_keys
+    #   vars:
+    #     cleanup:                          true
+    #     function:                         "source"
+    #   when:                             
+    #     - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+    #       (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
 
-    - name:                               "Destination - Cleanup the SSH credential files from the OS"
+    # - name:                               "Destination - Cleanup the SSH credential files from the OS"
+    #   ansible.builtin.include_role:
+    #     name:                             roles-scr/scr_keys
+    #   vars:
+    #     cleanup:                          true
+    #     function:                         "dest"
+    #   when:                             
+    #     - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
+    #       (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
+
+
+
+
+
+    - name:                               "All - Cleanup the SSH credential files from the OS"
       ansible.builtin.include_role:
         name:                             roles-scr/scr_keys
       vars:
         cleanup:                          true
         function:                         "dest"
-      when:                             
-        - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
-          (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
-
-
-
-
-
 
 
 
