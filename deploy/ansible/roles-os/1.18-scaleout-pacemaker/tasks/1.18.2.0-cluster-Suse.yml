@@ -422,4 +422,74 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | ANGI delayed startup - BEGIN                                               |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                "1.18.2.0 Generic Pacemaker - Ensure delayed pacemaker startup for ANGI scale-out"
+  when:                                use_hanasr_angi | default(false)
+  block:
+    - name:                            "1.18.2.0 Generic Pacemaker - Create pacemaker timer unit"
+      ansible.builtin.copy:
+        dest:                          /etc/systemd/system/pacemaker.timer
+        content: |
+                                       [Unit]
+                                       Description=Delay start of pacemaker.service after boot
+
+                                       [Timer]
+                                       OnBootSec=216
+                                       Unit=pacemaker.service
+
+                                       [Install]
+                                       WantedBy=timers.target
+        owner:                         root
+        group:                         root
+        mode:                          '0644'
+
+    - name:                            "1.18.2.0 Generic Pacemaker - Disable pacemaker service"
+      ansible.builtin.systemd:
+        name:                          pacemaker.service
+        enabled:                       false
+        daemon_reload:                 true
+
+    - name:                            "1.18.2.0 Generic Pacemaker - Enable pacemaker timer"
+      ansible.builtin.systemd:
+        name:                          pacemaker.timer
+        enabled:                       true
+        state:                         started
+
+    - name:                            "1.18.2.0 Generic Pacemaker - Check if SBD sysconfig file exists"
+      when:
+                                       - (database_cluster_type == "ASD") or
+                                         (database_cluster_type == "ISCSI")
+      ansible.builtin.stat:
+        path:                          /etc/sysconfig/sbd
+      register:                        sbd_sysconfig_file
+
+    - name:                            "1.18.2.0 Generic Pacemaker - Ensure SBD delayed start is disabled"
+      when:
+                                       - (database_cluster_type == "ASD") or
+                                         (database_cluster_type == "ISCSI")
+                                       - sbd_sysconfig_file.stat.exists
+      ansible.builtin.lineinfile:
+        path:                          /etc/sysconfig/sbd
+        regexp:                        '^SBD_DELAY_START='
+        line:                          'SBD_DELAY_START=no'
+        state:                         present
+
+    - name:                            "1.18.2.0 Generic Pacemaker - Restart cluster services on all nodes"
+      when:                            inventory_hostname == primary_instance_name
+      ansible.builtin.shell:           crm cluster restart --all
+      register:                        crm_cluster_restart_result
+      failed_when:                     crm_cluster_restart_result.rc != 0
+      changed_when:                    not (crm_cluster_restart_result.stdout | lower | regex_search('already|unchanged|no change|up to date|nothing to do'))
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | ANGI delayed startup - END                                                 |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
 # END of Generic Pacemaker Tasks
