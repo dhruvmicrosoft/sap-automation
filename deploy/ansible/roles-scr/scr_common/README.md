@@ -53,9 +53,14 @@ All variables live in `defaults/main.yaml`. They are **lowest-priority defaults*
 
 | Variable | Default | Description |
 |---|---|---|
-| `scr_run_id` | `ansible_date_time.iso8601` | Unique ID for each run; overwritten at runtime in `pre_tasks` |
+| `scr_job_id` | _set at runtime_ | Job number (`%04d`); allocated by `scr_log_function` `index/register` |
+| `scr_run_id` | _set at runtime_ | Run number within the Job (`%04d`); allocated by `scr_log_function` `index/register` |
 
-> **Note:** `scr_run_id` and `scr_blob_prefix` are also set dynamically via `set_fact` in `pre_tasks` so that the timestamp is captured at actual run time, not role-load time.
+> **Note:** `scr_job_id` and `scr_run_id` are set on `ansible_play_hosts[0]` by
+> the `index/register` call (which runs `run_once: true`). Every other host
+> picks them up via a broadcast `set_fact` that reads
+> `hostvars[ansible_play_hosts[0]]`. See `scr_log_function/README.md` for
+> details on the Job + Run identity model.
 
 ### Azure Blob Storage
 

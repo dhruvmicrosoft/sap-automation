@@ -29,22 +29,24 @@
   tags:                             [logging, always]
 
 
-# scr_run_id is set on localhost by index/register above.
-# Broadcast it to every host so all tasks use the correct run-scoped blob path.
-- name:                             "Controller - Broadcast scr_run_id to all hosts"
+# scr_job_id and scr_run_id are set on the run_once host (ansible_play_hosts[0]) by index/register.
+# set_fact tasks in index.yaml have no delegate_to, so facts land on the current play host.
+- name:                             "Controller - Broadcast scr_job_id and scr_run_id to all hosts"
   ansible.builtin.set_fact:
-    scr_run_id:                     "{{ hostvars['localhost']['scr_run_id'] }}"
+    scr_job_id:                     "{{ hostvars[ansible_play_hosts[0]]['scr_job_id'] }}"
+    scr_run_id:                     "{{ hostvars[ansible_play_hosts[0]]['scr_run_id'] }}"
   tags:                             [logging, always]
 
 
 - name:                             "Controller - Write summary log header"  # noqa: run-once[task]
   ansible.builtin.copy:
-    dest:                           "{{ scr_log_dir }}/{{ scr_run_id }}_summary.log"
+    dest:                           "{{ scr_log_dir }}/{{ scr_job_id }}_{{ scr_run_id }}_summary.log"
     mode:                           "0644"
     content: |
       ============================================================
       SCR INITIALIZE — RUN STARTED
       ============================================================
+      Job ID  : {{ scr_job_id }}
       Run ID  : {{ scr_run_id }}
       Source  : {{ scr_source_sid }}
       Target  : {{ scr_dest_sid }}

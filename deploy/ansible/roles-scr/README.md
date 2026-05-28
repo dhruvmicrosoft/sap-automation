@@ -31,33 +31,72 @@ roles-scr/
 
 ## How They Fit Together
 
-The main entry point is `playbook_scr_initialize.yaml`. Here is the end-to-end flow:
+The main entry point is `playbook_scr_initialize.yaml`. The end-to-end
+flow has three phases: **initialize** (register/resume), **work**
+(STEP 4–9 guarded by `scr_resume_from_step`, each ending with a
+checkpoint that advances `last_completed_step`), and **finalize**
+(post_tasks set run/job status + upload the captured ansible log).
 
 ```
 playbook_scr_initialize.yaml
 │
-├── vars_files: scr_common/defaults/main.yaml   ← loads all shared vars
+├── vars_files: scr_common/defaults/main.yaml   ← shared vars
 │
-├── PRE_TASKS
-│   ├── [logging]    Write summary log header; scr_log_function log_summary ← STEP 1-3
-│   └── [secrets]    scr_keys  ← pull SSH creds from Key Vault (source + dest)
+├── PRE_TASKS  (run_once on ansible_play_hosts[0])
+│   ├─ truncate /tmp/scr_ansible_run.log (in place)
+│   ├─ scr_log_function activity=initialize action=register
+│   │    → load global index, abort stale jobs, find/create Job + Run,
+│   │      set scr_job_id, scr_run_id, scr_resume_from_step
+│   ├─ broadcast identity facts to every host (hostvars[...])
+│   ├─ STEP 1 — log_summary: "Logging initialized"
+│   └─ STEP 2 — scr_keys (Key Vault) + log_summary
 │
-├── TASKS  (runs in parallel across all 4 hosts)
-│   ├── [discovery]  scr_system_discovery  ← gather facts on source hosts
-│   ├── [discovery]  scr_system_discovery  ← gather facts on dest hosts
-│   ├── [kernel]     scr_kernel  ← inventory + compare + sync report
-│   └── [fetch]      Fetch per-host reports → controller; scr_log_function log_summary ← STEP 4-9
+├── TASKS  (parallel across all hosts; each STEP guarded by
+│         when: scr_resume_from_step | int <= N)
+│   ├─ STEP 4  scr_system_discovery (source + dest)
+│   ├─ STEP 5  fetch per-host discovery reports to controller
+│   ├─ STEP 6  scr_kernel inventory (source + dest)
+│   ├─ STEP 7  scr_kernel compare
+│   ├─ STEP 8  write kernel sync report
+│   ├─ STEP 9  build + store kernel sync state (object activity)
+│   └─ every STEP ends with:
+│        scr_log_function activity=checkpoint step=N description="..."
+│        → logs STEP line + bumps last_completed_step in the index
 │
-└── POST_TASKS  (runs once, after ALL hosts finish)
-    ├── [fetch,upload]  scr_log_function file/store ← upload artifacts to filestore
-    └── [cleanup]       scr_keys  ← remove temp SSH key files
+└── POST_TASKS  (after every host finishes)
+    ├─ append discovery + kernel reports to detail log
+    ├─ compute final status: any failed host or discovery failure
+    │    → Failed (retry-able — next run resumes), else Completed-Success
+    ├─ scr_log_function activity=initialize action=update target=run
+    ├─ scr_log_function activity=initialize action=update target=job
+    ├─ scr_keys cleanup
+    └─ upload /tmp/scr_ansible_run.log →
+         scr-runs/job_<id>/run_<id>/ansible_run.log
 ```
+
+### Restartability
+
+If a run ends with status `Failed`, the **next** invocation of
+`playbook_scr_initialize.yaml` re-uses the same Job, allocates a new
+Run number, and sets `scr_resume_from_step = last_completed_step + 1`.
+STEP blocks whose number is below that are skipped by the `when:` guard,
+so work already done is not repeated. `Completed-Success`, `Aborted`,
+and `Completed-Failed` are all terminal — the next invocation starts a
+brand-new Job.
+
+See [scr_log_function/README.md](scr_log_function/README.md) for the
+full state machine and global index schema.
 
 ### Why `pre_tasks` / `tasks` / `post_tasks` layout?
 
-- **`pre_tasks`**: Runs on every host *before* the main task block. Used for setup (log init, credentials) that must complete before discovery starts.
-- **`tasks`**: The main parallel work — discovery runs simultaneously on all four SAP hosts (`X90_PAS`, `X90_DB`, `X91_PAS`, `X91_DB`).
-- **`post_tasks`**: Runs only *after* every host has finished its `tasks` block. This guarantees all discovery reports are on the controller before the final upload to Azure — no race condition.
+- **`pre_tasks`**: Runs once on every host *before* the main task block.
+  Used for setup (log truncate, register run, broadcast identity facts,
+  credentials) that must complete before work starts.
+- **`tasks`**: The main parallel work — discovery and kernel steps run on
+  multiple SAP hosts (`X90_PAS`, `X90_DB`, `X91_PAS`, `X91_DB`).
+- **`post_tasks`**: Runs only *after* every host has finished its `tasks`
+  block. This guarantees all per-host artifacts are on the controller
+  before the final status update and ansible-log upload — no race.
 
 ---
 
@@ -81,14 +120,14 @@ Each step has a tag so you can run only what you need:
 
 | Tag | What it runs |
 |---|---|
-| `logging` | Step 1 — Write summary log header and log STEP 1 |
+| `logging` | Step 1 — Register run in global index, broadcast `scr_job_id`/`scr_run_id`, write summary log header |
 | `secrets` | Step 2 — Pull SSH credentials from Azure Key Vault |
 | `discovery` | Step 4 — Run system discovery on all SAP hosts |
 | `fetch` | Step 5 — Fetch per-host reports, log STEP 4-5 |
 | `kernel` | Steps 6-9 — SAP kernel inventory, compare, reports, log STEP 6-9 |
 | `upload` | pre_tasks / post_tasks — write and upload summary log, upload artifacts to filestore |
-| `cleanup` | Cleanup — Remove temp SSH key files from the controller |
-| `always` | Setup tasks that always run regardless of other tags (date/time facts, run_id) |
+| `cleanup` | Cleanup — Remove temp SSH key files; mark Run + Job complete in the global index |
+| `always` | Setup tasks that always run regardless of other tags (date/time facts, Job+Run id register, broadcast) |
 
 ```bash
 # Discovery only
@@ -118,19 +157,28 @@ All roles use **MSI (Managed Identity)** — no client secrets or passwords are 
 
 ## Azure Blob Storage Layout
 
-All SCR artifacts land in the `tfstate` container of `mkds0eus2tfstate152`:
+Most SCR artifacts are **job-scoped** (so they accumulate across resume
+attempts of the same Job). Only the captured ansible-playbook output is
+**run-scoped**.
 
 ```
 tfstate/
 └── scr-runs/
-    └── <run_id>/                         ← unique per run (ISO8601, set in pre_tasks)
-        ├── logs/
-        │   ├── <run_id>_summary.log      ← high-level step log (log_summary)
-        │   ├── <run_id>_detail.log       ← verbose/diagnostic log (log_detail)
-        │   └── <fact_name>.json          ← serialised Ansible facts (object store)
-        └── filestore/
-            └── <filename>               ← discovery reports, kernel reports, etc.
+    ├── scr_global_index.json                  ← global index of all Jobs and Runs
+    └── job_<NNNN>/                            ← e.g. job_0007/
+        ├── logs/                              ← job-scoped (appended across runs)
+        │   ├── <job_id>_summary.log
+        │   └── <job_id>_detail.log
+        ├── object_store.json                  ← job-scoped Ansible facts
+        ├── FILE_STORE/                        ← job-scoped uploaded files
+        │   └── <filename>
+        └── run_<NNNN>/                        ← e.g. run_0001/
+            └── ansible_run.log                ← full ansible output for this attempt
 ```
+
+See [scr_log_function/README.md](scr_log_function/README.md) for the
+full Job+Run identity model, status state machine, and global-index
+schema.
 
 ---
 

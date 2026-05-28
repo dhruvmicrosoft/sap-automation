@@ -1,17 +1,23 @@
 ---
 # scr_log_function/tasks/main.yaml
 #
-# Generic log/storage function for SCR automation.
-# Routes to one of four sub-tasks based on the `activity` variable.
+# Generic log/storage/index function for SCR automation. Routes by the
+# `activity` variable to one of the activity sub-tasks below. The
+# storage-account discovery block at the top runs (cached) on first call.
 #
 # Required vars (set by caller):
-#   activity:        log_summary | log_detail | object | file
-#   action:          store | retrieve | update | delete
-#   payload: string, list of strings, fact name(s), or file path(s)
+#   activity:        initialize | checkpoint | log_summary | log_detail | object | file
+#   action:          register | update | store | retrieve | delete
+#                    (some activities ignore action; see README.md)
+#   payload: string, list of strings, dict, fact name(s), or file path(s)
 #
 # Optional vars:
 #   result_var:   variable name to register retrieved data (object/file retrieve)
 #   result_path:  local directory for downloaded files (file retrieve)
+#   step, description:  for activity=checkpoint
+#
+# See roles-scr/scr_log_function/README.md for the full per-activity
+# contract, restartability/checkpoint semantics, and blob layout.
 
 
 # /*---------------------------------------------------------------------------8
@@ -42,6 +48,7 @@
       when:                             _scr_lf_storage_discovery.stdout | trim | length > 0
 
   when:                                 scr_azure_storage_account is not defined
+  tags:                                 always
   # run_once:                             true
 
 
@@ -51,20 +58,28 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                 "SCR Log Function - Route: index / {{ action }}"
+- name:                                 "SCR Log Function - Route: initialize / {{ action }}"
+  ansible.builtin.import_tasks:         initialize.yaml
+  when:                                 activity == "initialize"
+  tags:                                 always
+
+- name:                                 "SCR Log Function - Route: checkpoint (log STEP + advance index step)"
   ansible.builtin.include_tasks:
-    file:                               roles-scr/scr_log_function/tasks/index.yaml
-  when:                                 activity == "index"
+    file:                               roles-scr/scr_log_function/tasks/checkpoint.yaml
+  when:                                 activity == "checkpoint"
+  tags:                                 always
 
 - name:                                 "SCR Log Function - Route: log_summary / {{ action }}"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/log_summary.yaml
   when:                                 activity == "log_summary"
+  tags:                                 always
 
 - name:                                 "SCR Log Function - Route: log_detail / {{ action }}"
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/log_detail.yaml
   when:                                 activity == "log_detail"
+  tags:                                 always
 
 # /*---------------------------------------------------------------------------8
 # activity: object
@@ -87,6 +102,7 @@
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/object.yaml
   when:                                 activity == "object"
+  tags:                                 always
 
 # /*---------------------------------------------------------------------------8
 # activity: file
@@ -109,3 +125,4 @@
   ansible.builtin.include_tasks:
     file:                               roles-scr/scr_log_function/tasks/file.yaml
   when:                                 activity == "file"
+  tags:                                 always

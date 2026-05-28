@@ -15,10 +15,15 @@ scr_log_dir:                            "{{ scr_basedir }}/logs"
 scr_datastore_root:                     "{{ scr_basedir }}/datastore"
 
 # ── Run identity ────────────────────────────────────────────────────────────
-# scr_run_id is set dynamically at the start of each play by the
-# scr_log_function index/register action. It is a zero-padded sequential
-# number (e.g. 0001, 0002) stored in the global run index blob.
-# Do NOT define a static default here.
+# scr_job_id and scr_run_id are set dynamically at the start of each play by
+# the scr_log_function index/register action. They are zero-padded sequential
+# numbers (e.g. 0001) stored in the global run index blob and also written to
+# a dedicated current-run blob so playbooks can read them from Azure Storage.
+# Do NOT define static defaults here.
+
+# Fixed blob written by index/register so any play can discover the active run
+# without relying on Ansible variable scoping.
+scr_current_run_blob:                   "scr-runs/scr_current_run.json"
 
 # ── Azure Blob Storage ───────────────────────────────────────────────────────
 # scr_azure_subscription_id: set in inventory (host var subscription_id) or --extra-vars
