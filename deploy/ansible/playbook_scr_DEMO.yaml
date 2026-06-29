@@ -159,81 +159,81 @@
       ansible.builtin.ping:
 
 
-# -------------------------------------+---------------------------------------8
-#
-# SAP KERNEL
-#
-# -------------------------------------+---------------------------------------8
-    - name:
-      include_tasks:                    tasks/scr_sap_kernel.yaml
+# # -------------------------------------+---------------------------------------8
+# #
+# # SAP KERNEL
+# #
+# # -------------------------------------+---------------------------------------8
+#     - name:
+#       include_tasks:                    tasks/scr_sap_kernel.yaml
 
-    - name:                             "LOG - STEP [KERNEL-SAP-SYNC]: SAP kernel synchronization completed"  # noqa: run-once[task]
-      ansible.builtin.include_role:
-        name:                           roles-scr/scr_log_function
-      vars:
-        activity:                       log_summary
-        action:                         store
-        payload:                        "STEP [KERNEL-SAP-SYNC] : SAP kernel synchronization completed — {{ inventory_hostname }}"
-        sapsid:                         "{{ scr_dest_sid }}"
-      # run_once:                         true
-      tags:                             [kernel]
-      when:                             
-        - (sapsid | upper + '_PAS') in vars['group_names']
-
-
-    # - ansible.builtin.set_fact:
-    #     scr_run_id:                     0058
+#     - name:                             "LOG - STEP [KERNEL-SAP-SYNC]: SAP kernel synchronization completed"  # noqa: run-once[task]
+#       ansible.builtin.include_role:
+#         name:                           roles-scr/scr_log_function
+#       vars:
+#         activity:                       log_summary
+#         action:                         store
+#         payload:                        "STEP [KERNEL-SAP-SYNC] : SAP kernel synchronization completed — {{ inventory_hostname }}"
+#         sapsid:                         "{{ scr_dest_sid }}"
+#       # run_once:                         true
+#       tags:                             [kernel]
+#       when:                             
+#         - (sapsid | upper + '_PAS') in vars['group_names']
 
 
-
-
-
-
-    # - name:                             "Dest - Initialize SAP parameters for SID"
-    #   include_role:
-    #     name:                           roles-scr/scr_sap_utility
-    #   vars:
-    #     function:                       "init"                                                      #
-    #     type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
-    #     sapsid:                         "{{ scr_dest_sid }}"                                        # SID
-    #   when:                             
-    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
-    #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
-
-
-
-    - name:                             "Dest - Stop SAP Application for SID"
-      include_role:
-        name:                           roles-scr/scr_sap_utility
-      vars:
-        function:                       "stopsap"                                                      #
-        type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
-        sapsid:                         "{{ scr_dest_sid }}"                                        # SID
-      when:                             
-        - (sapsid | upper + '_PAS') in vars['group_names'] or
-          (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
-
-
-
-
-
-    - name:                             "Dest - Synchronize SAP Kernel Files for SID"
-      include_role:
-        name:                           roles-scr/scr_kernel
-      vars:
-        kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
-        function:                       "sync"                                                      #
-        sapsid:                         "{{ scr_dest_sid }}"                                        # SID
-      when:                             
-        - (sapsid | upper + '_PAS') in vars['group_names'] or
-          (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+#     # - ansible.builtin.set_fact:
+#     #     scr_run_id:                     0058
 
 
 
 
 
 
-    # - meta:         end_play
+#     # - name:                             "Dest - Initialize SAP parameters for SID"
+#     #   include_role:
+#     #     name:                           roles-scr/scr_sap_utility
+#     #   vars:
+#     #     function:                       "init"                                                      #
+#     #     type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
+#     #     sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+#     #   when:                             
+#     #     - (sapsid | upper + '_PAS') in vars['group_names'] or
+#     #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+
+
+
+#     - name:                             "Dest - Stop SAP Application for SID"
+#       include_role:
+#         name:                           roles-scr/scr_sap_utility
+#       vars:
+#         function:                       "stopsap"                                                      #
+#         type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
+#         sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+#       when:                             
+#         - (sapsid | upper + '_PAS') in vars['group_names'] or
+#           (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+
+
+
+
+
+#     - name:                             "Dest - Synchronize SAP Kernel Files for SID"
+#       include_role:
+#         name:                           roles-scr/scr_kernel
+#       vars:
+#         kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+#         function:                       "sync"                                                      #
+#         sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+#       when:                             
+#         - (sapsid | upper + '_PAS') in vars['group_names'] or
+#           (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+
+
+
+
+
+
+#     # - meta:         end_play
 
 
 

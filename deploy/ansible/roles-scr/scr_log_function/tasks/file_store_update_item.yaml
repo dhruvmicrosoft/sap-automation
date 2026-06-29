@@ -12,16 +12,38 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 # region:
-- name:                                 "SCR Log Function [file/{{ action }}] - Compute per-item working vars"
+# NOTE: Split into TWO set_fact tasks (was previously one). Ansible 2.18's
+#       new templating engine exposes set_fact target keys to each other
+#       during argument finalization but resolves them to None until their
+#       own values are computed. The previous single-task form had
+#       _local_file_path reference _file_name while both were targets of
+#       the same set_fact, so _file_name templated to None and
+#       "{{ _file_name | basename }}" failed with
+#       "expected str, bytes or os.PathLike object, not NoneType".
+#       A `vars:` block defining _file_name no longer rescues this on 2.18+
+#       because the target-key shadow wins over the vars-block value. Doing
+#       the parse in a separate, earlier task removes the self-reference
+#       and works on every Ansible version. Behavior is otherwise unchanged.
+- name:                                 "SCR Log Function [file/{{ action }}] - Parse _file_entry into name + host"
+  ansible.builtin.set_fact:
+    _file_name:                         "{{ (_file_entry.split(','))[0] | trim }}"
+    _file_host:                         "{{ inventory_hostname
+                                            if   ((_file_entry.split(','))[1] | default('') | trim | lower) != 'localhost'
+                                            else 'localhost' }}"
+
+
+- name:                                 "SCR Log Function [file/{{ action }}] - Compute controller-local staging path"
   ansible.builtin.set_fact:
     _local_file_path:                   "{{ scr_log_function_local_filestore_dir }}/{{ _file_name | basename }}"
-    _file_name:                         "{{ _file_parts[0] | trim }}"
-    _file_host:                         "{{ inventory_hostname 
-                                            if   (_file_parts[1] | default('') | trim | lower) != 'localhost'
-                                            else 'localhost' }}"
-  vars:
-    _file_parts:                        "{{ _file_entry.split(',') }}"
-    _file_name:                         "{{ _file_parts[0] | trim }}"           # Redundant with set_fact but needed for correct evaluation order (set_fact is not evaluated until the task runs, but we need _file_name to be defined for the when condition of this task itself, which runs during the parsing phase)
+    # _blob_subpath is the part AFTER scr_log_function_remote_filestore_dir
+    # in the final blob name. When the optional `subdir` var (passed by
+    # the caller via include_role vars) is empty, this collapses to just
+    # the file's basename, preserving the original flat layout exactly.
+    # When `subdir` is non-empty (e.g. "myhost/DB_HDB"), the blob lands
+    # under that virtual folder in Azure Blob Storage. The same value is
+    # used as the file_store dict key so per-blob metadata entries stay
+    # unique even when basenames collide across different subdirs.
+    _blob_subpath:                      "{{ ((subdir | default('') | trim) ~ '/' if (subdir | default('') | trim) else '') ~ (_file_name | basename) }}"
 # endregion
 
 # /*---------------------------------------------------------------------------8
