@@ -241,7 +241,7 @@
       ansible.builtin.include_role:
         name:                           roles-scr/scr_db_backup
       when:                             
-        - (scr_dest_sid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+        - (scr_source_sid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
 
     - name:                             "LOG - STEP 3: HANA backup + upload complete"  # noqa: run-once[task]
       ansible.builtin.include_role:
