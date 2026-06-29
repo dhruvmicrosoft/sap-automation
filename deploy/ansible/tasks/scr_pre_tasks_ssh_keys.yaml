@@ -6,6 +6,8 @@
 - name:                             "Source - Get the SSH credentials for the SAP system from Key Vault"
   ansible.builtin.include_role:
     name:                           roles-scr/scr_keys
+    apply:
+      tags:                         [secrets]
   vars:
     function:                       "source"                                                    # source or dest
     granularity:                    "workload"                                                  # workload | sid | host
@@ -14,11 +16,14 @@
   when:                             
     - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
       (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
+  tags:                             [secrets]
 
 
 - name:                             "Destination - Get the SSH credentials for the SAP system from Key Vault"
   ansible.builtin.include_role:
     name:                           roles-scr/scr_keys
+    apply:
+      tags:                         [secrets]
   vars:
     function:                       "dest"                                                      # source or dest
     granularity:                    "workload"                                                  # workload | sid | host
@@ -27,6 +32,7 @@
   when:                             
     - (vars['scr_' + function + '_sid'] | upper) + '_PAS' in vars['group_names'] or
       (vars['scr_' + function + '_sid'] | upper) + '_DB'  in vars['group_names']                # source or destination groups
+  tags:                             [secrets]
 
 
 - name:                             "LOG - STEP 2: Key Vault secrets retrieved"  # noqa: run-once[task]
@@ -35,6 +41,6 @@
   vars:
     activity:                       log_summary
     action:                         store
-    payload:                "STEP 2 : Key Vault secrets retrieved"
+    payload:                        "STEP 2 : Key Vault secrets retrieved"
   run_once:                         true
   tags:                             [secrets]

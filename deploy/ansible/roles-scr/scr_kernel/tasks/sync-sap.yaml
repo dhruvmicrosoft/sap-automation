@@ -42,13 +42,22 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 # region:
-# - name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Retrieve file_store from OBJECT_STORE"
-#   ansible.builtin.include_role:
-#     name:                               roles-scr/scr_log_function
-#   vars:
-#     activity:                           object
-#     action:                             retrieve
-#     payload:                    file_store
+- name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Retrieve file_store from OBJECT_STORE"
+  ansible.builtin.include_role:
+    name:                               roles-scr/scr_log_function
+  vars:
+    activity:                           object
+    action:                             retrieve
+    payload:                            scr_extra_on_target
+
+# Replace __SID__ placeholder in file paths with actual SID
+# Filter for relevant kernel files based on typical SAP kernel directory structure
+# - ansible.builtin.set_fact:
+#     scr_extra_on_target:                  "{{ (scr_extra_on_target
+#                                               | map('replace', '__SID__', sapsid)
+#                                               | select('search', 'exe/(n)?uc/linuxx86_64/')
+#                                               | map('replace', 'uc/linuxx86_64/', 'uc/linuxx86_64_test/')
+#                                               | list) }}"
 # endregion
 
 
@@ -64,15 +73,70 @@
   vars:
     activity:                           file
     action:                             retrieve
-    payload:                    /tmp/.scr/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
+    payload:                            /tmp/.scr/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
 # endregion
 
 
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Get file_store object for metadata                                         |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+# region:
+
+- name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Create directory for extracting archive"
+  become:                               true                                                        # root permissions may be required to create directories in certain locations
+  ansible.builtin.file:
+    path:                               /sapmnt/{{ scr_dest_sid }}/exe/unarch_test
+    state:                              directory
+    mode:                               '0755'                                                      # Set appropriate permissions for the directory
+    owner:                              x91adm                                                      # Set appropriate ownership for the directory
+    group:                              sapsys                                                      # Set appropriate group ownership for the directory
+
+- name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Extract archive on target system"
+  become:                               true                                                        # root permissions may be required to extract files to certain directories in
+  ansible.builtin.unarchive:
+    src:                                /tmp/.scr/{{ scr_source_sid }}_SAP_kernel_files.tar.gz
+    dest:                               /sapmnt/{{ scr_dest_sid }}/exe/unarch_test
+    remote_src:                         true                                                         # The archive is already on the target system, so we set remote_src to yes to avoid trying to upload it again
+    # extra_opts:                         [--no-same-owner]                                           # Avoid permission issues by not trying to set the original ownership from the source system, which may not exist on the target system
+
+
+
+
+# endregion
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Get file_store object for metadata                                         |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+# region:
+# - name:                                 "SCR KERNEL: [{{ kernel }}/{{ function }}] - Delete files from SAP kernel directory that are not present on the Source System"
+#   become:                               true                                                        # root permissions may be required to delete certain files and directories
+#   ansible.builtin.file:
+#     path:                               "{{ _file_name }}"
+#     state:                              absent
+#   loop:                                 "{{ purge_list }}"
+#   loop_control:
+#     loop_var:                           _file_name
+#   vars:
+#                                         # Replace __SID__ placeholder in file paths with actual SID
+#                                         # Filter for relevant kernel files based on typical SAP kernel directory structure
+#                                         # /sapmnt/__SID__/exe/uc/linuxx86_64/hdbclient/rtt/lib/tc_logging_java-1.0.0.jar
+#     purge_list:                         "{{ (scr_extra_on_target
+#                                               | map('replace', '__SID__', sapsid)
+#                                               | select('search', 'exe/(n)?uc/linuxx86_64/')
+#                                               | map('replace', 'uc/linuxx86_64/', 'uc/linuxx86_64_test/')
+#                                               | list) }}"
 
 
 
 
 
+
+# endregion
 
 
 

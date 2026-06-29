@@ -71,7 +71,7 @@
       vars:
         activity:                       log_summary
         action:                         store
-        payload:                "STEP [KERNEL-SAP-SYNC] : SAP kernel synchronization completed — {{ inventory_hostname }}"
+        payload:                        "STEP [KERNEL-SAP-SYNC] : SAP kernel synchronization completed — {{ inventory_hostname }}"
         sapsid:                         "{{ scr_dest_sid }}"
       # run_once:                         true
       tags:                             [kernel]
@@ -84,16 +84,47 @@
 
 
 
-    - name:                             "Dest - Synchronize SAP Kernel Files for SID"
+
+
+
+    # - name:                             "Dest - Initialize SAP parameters for SID"
+    #   include_role:
+    #     name:                           roles-scr/scr_sap_utility
+    #   vars:
+    #     function:                       "init"                                                      #
+    #     type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
+    #     sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+    #   when:                             
+    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
+    #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+
+
+
+    - name:                             "Dest - Stop SAP Application for SID"
       include_role:
-        name:                           roles-scr/scr_kernel
+        name:                           roles-scr/scr_sap_utility
       vars:
-        kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
-        function:                       "sync"                                                      #
+        function:                       "stopsap"                                                      #
+        type:                           "sap"                                                       # sap or db (hana, oracle, etc.)
         sapsid:                         "{{ scr_dest_sid }}"                                        # SID
       when:                             
         - (sapsid | upper + '_PAS') in vars['group_names'] or
           (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
+
+
+
+
+
+    # - name:                             "Dest - Synchronize SAP Kernel Files for SID"
+    #   include_role:
+    #     name:                           roles-scr/scr_kernel
+    #   vars:
+    #     kernel:                         "sap"                                                       # sap or db (hana, oracle, etc.)
+    #     function:                       "sync"                                                      #
+    #     sapsid:                         "{{ scr_dest_sid }}"                                        # SID
+    #   when:                             
+    #     - (sapsid | upper + '_PAS') in vars['group_names'] or
+    #       (sapsid | upper + '_DB')  in vars['group_names']                                          # source or destination groups
 
 
 

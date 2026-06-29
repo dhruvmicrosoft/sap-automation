@@ -31,6 +31,7 @@ X90_SCS:
       resource_group_name : MKDSE-SECE-SAP00-X90
       subscription_id     : 02993e58-2910-4b39-910c-aeccd207abf7
       use_nvme_disks      : false
+      ansible_python_interpreter : /usr/bin/python3
 
   vars:
     node_tier             : scs
