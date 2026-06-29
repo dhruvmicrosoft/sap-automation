@@ -49,5 +49,5 @@ db_dest_password_secret_name:           "MKDSE-SECE-SAP00-X91-sap-password"
 #   - For FOR FULL SYSTEM on scale-out / MDC, must resolve to the same
 #     path on every node (i.e. a shared mount).
 db_backup_dir:                          "/hana/backup"
-
+db_backup_type:                         ""
 
