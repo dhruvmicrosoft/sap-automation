@@ -91,7 +91,7 @@ fi
 
 # Check if running on deployer
 if [[ ! -f /etc/profile.d/deploy_server.sh ]]; then
-	configureNonDeployer "${tf_version:-1.14.5}"
+	configureNonDeployer "${tf_version:-1.15.7}"
 fi
 echo -e "$green--- az login ---$reset"
 # Set logon variables
@@ -431,7 +431,7 @@ if [ 1 -eq $added ]; then
 fi
 
 # Platform-specific summary handling
-if [ -f "${SID}.md" ]; then
+if [ -f "readme.md" ]; then
 	if [ "$PLATFORM" == "devops" ]; then
 	  sudo cp "readme.md" "$AGENT_TEMPDIRECTORY/${SID}.md"
 		echo "##vso[task.addattachment type=Distributedtask.Core.Summary;name=${SID}.md;]$AGENT_TEMPDIRECTORY/${SID}.md"
