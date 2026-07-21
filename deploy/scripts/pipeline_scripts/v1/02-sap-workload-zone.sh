@@ -85,7 +85,7 @@ fi
 
 # Check if running on deployer
 if [[ ! -f /etc/profile.d/deploy_server.sh ]]; then
-	configureNonDeployer "${tf_version:-1.14.5}"
+	configureNonDeployer "${tf_version:-1.15.7}"
 fi
 
 echo -e "$green--- az login ---$reset"
@@ -327,5 +327,9 @@ if [ 1 == $added ]; then
 fi
 
 print_banner "$banner_title" "Exiting $SCRIPT_NAME" "info"
-
+if [ -f readme.md ]; then
+		cat "readme.md"
+		sudo cp "readme.md" "$AGENT_TEMPDIRECTORY/${WORKLOAD_ZONE_FOLDERNAME}.md"
+		echo "##vso[task.addattachment type=Distributedtask.Core.Summary;name=${WORKLOAD_ZONE_FOLDERNAME}.md;]$AGENT_TEMPDIRECTORY/${WORKLOAD_ZONE_FOLDERNAME}.md"
+fi
 exit $return_code

@@ -9,7 +9,7 @@ oracle_user_name:                       oracle
 grid_user_name:                         grid
 orchestration_ansible_user:             azureadm
 # ------------------- Begin - SDAF Ansible Version ---------------------------8
-SDAF_Version:                           "3.20.0.0"
+SDAF_Version:                           "3.21.0.0"
 
 # ------------------- End - SDAF Ansible Version ---------------------------8
 
@@ -76,7 +76,8 @@ hana_components:                       "all"
 
 instance_type:                         "ASCS"
 
-dbload_retry_count:                    120
+dbload_retry_count:                    240
+dbload_async_timeout:                  14400
 
 single_server:                         false
 
