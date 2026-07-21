@@ -188,6 +188,7 @@ Each role has its own detailed README:
 
 - [`scr_common/README.md`](scr_common/README.md) — Shared defaults and utility tasks
 - [`scr_kernel/readme.md`](scr_kernel/readme.md) — SAP and DB kernel inventory, compare, and sync
+- [`scr_keys/readme.md`](scr_keys/readme.md) — Azure Key Vault SSH credential retrieval (MSI)
 - [`scr_log_function/README.md`](scr_log_function/README.md) — Generic logging and Azure Blob Storage function
 - [`scr_system_discovery/README.md`](scr_system_discovery/README.md) — SAP system fact discovery
 

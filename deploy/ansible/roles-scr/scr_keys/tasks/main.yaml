@@ -28,13 +28,15 @@
 #   This role retrieves SSH credentials (username and private key) from Azure Key Vault for SAP source and/or target systems.
 #     Secrets are resolved based on a configurable granularity level (workload, SID, or host), which determines the naming
 #     convention used in Key Vault.
-#   The role uses the Azure CLI to securely fetch the required secrets and exposes them as Ansible facts for use in
-#     subsequent SSH-based tasks. Built-in validation, retries, and error handling ensure reliable secret retrieval.
+#   The role uses the `azure.azcollection.azure_rm_keyvaultsecret_info` module with `auth_source: msi` to securely fetch
+#     the required secrets from the controller (delegate_to: localhost) and exposes them as per-host Ansible facts
+#     (`ansible_user`, `ansible_ssh_private_key_file`) for use in subsequent SSH-based tasks. Retries (5x, 1s delay)
+#     provide resilience against transient Key Vault throttling.
 #   To support complex scenarios, the role can manage credentials from up to two separate Key Vaults (source and target)
 #     within a single execution. This is achieved by dynamically constructing variable names based on the provided `function`
-#     parameter.
-#   An optional cleanup step removes any temporary files created during execution to ensure that sensitive data is not
-#     persisted on the system.
+#     parameter (e.g. `scr_source_sid` vs. `scr_dest_sid`).
+#   An optional cleanup step (invoked by re-including the role with `cleanup: true`) removes the temporary SSH key files
+#     that were created on the controller so that sensitive data is not persisted on the system.
 #   The role is designed to be flexible and reusable across environments by supplying the appropriate variables
 #     (`function`, `granularity`, `prefix`, `kv_name`).
 #
