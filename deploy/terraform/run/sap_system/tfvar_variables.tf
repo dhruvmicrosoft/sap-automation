@@ -599,12 +599,12 @@ variable "database_vm_image"                    {
                                                   description = "Virtual machine image to use for the database server"
                                                   default = {
                                                               "os_type"         = "LINUX"
-                                                              "source_image_id" = ""
-                                                              "publisher"       = ""
-                                                              "offer"           = ""
-                                                              "sku"             = ""
-                                                              "version"         = ""
-                                                              "type"            = "custom"
+                                                              "source_image_id" = null
+                                                              "publisher"       = null
+                                                              "offer"           = null
+                                                              "sku"             = null
+                                                              "version"         = null
+                                                              "type"            = "marketplace"
                                                             }
                                                 }
 
@@ -1016,11 +1016,11 @@ variable "application_server_image"             {
                                                   description = "Virtual machine image to use for the application server"
                                                   default = {
                                                               "os_type"         = "LINUX"
-                                                              "source_image_id" = ""
-                                                              "publisher"       = ""
-                                                              "offer"           = ""
-                                                              "sku"             = ""
-                                                              "version"         = ""
+                                                              "source_image_id" = null
+                                                              "publisher"       = null
+                                                              "offer"           = null
+                                                              "sku"             = null
+                                                              "version"         = null
                                                             }
                                                  }
 
@@ -1473,6 +1473,11 @@ variable "ANF_usr_sap_throughput"               {
                                                   default     = 128
                                                 }
 
+variable "AFS_usr_sap"                          {
+                                                  description = "If defined, will place /usr/sap for the application tier on the Azure Files sapmnt storage. Each application server, including the PAS, mounts its own directory on the share. The share is shared with /sapmnt, so increase 'sapmnt_volume_size' beyond the 128 GB default to allow for the application server work directories and traces"
+                                                  default     = false
+                                                }
+
 
 # /sapmnt
 
@@ -1714,5 +1719,3 @@ variable "workload_zone_name"                   {
                                                   description = "The name of the workload zone"
                                                   default     = ""
                                                 }
-
-

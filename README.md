@@ -1,27 +1,130 @@
 <!-- Copyright (c) Microsoft Corporation. -->
 <!-- Licensed under the MIT License. -->
 
-# Project
+# SAP Deployment Automation Framework
 
 The SAP deployment automation framework on Azure is an open-source orchestration tool for deploying, installing and maintaining SAP environments. You can create infrastructure for SAP landscapes based on SAP HANA and NetWeaver with AnyDB on any of the SAP-supported operating system versions and deploy them into any Azure region.
 
 The framework uses Terraform for infrastructure deployment, and Ansible for the operating system and application configuration.
 
-## Enterprise-scale  - Reference Implementation
+![Ansible Lint](https://github.com/Azure/sap-automation/workflows/Ansible%20Lint/badge.svg)
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/azure/sap-automation.svg)](http://isitmaintained.com/project/azure/sap-automation "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/azure/sap-automation.svg)](http://isitmaintained.com/project/azure/sap-automation "Percentage of issues still open")
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Azure/sap-automation/badge)](https://scorecard.dev/viewer/?uri=github.com/Azure/sap-automation)
 
-![Ansible Lint](https://github.com/Azure/sap-automation/workflows/Ansible%20Lint/badge.svg)    [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/azure/sap-automation.svg)](http://isitmaintained.com/project/azure/sap-automation "Average time to resolve an issue")    [![Percentage of issues still open](http://isitmaintained.com/badge/open/azure/sap-automation.svg)](http://isitmaintained.com/project/azure/sap-automation "Percentage of issues still open") [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Azure/sap-automation/badge)](https://scorecard.dev/viewer/?uri=github.com/Azure/sap-automation)
+## Choose how to run SDAF
 
-## Documentation
+SDAF supports three execution models. Each model deploys the same framework
+components, but the setup, configuration generation, identity, and approval
+processes differ.
 
-The user guidance can be located here [SAP deployment automation framework](https://docs.microsoft.com/azure/virtual-machines/workloads/sap/automation-deployment-framework)
+| Execution model | Use this path when | Start here |
+| --- | --- | --- |
+| GitHub Actions | Your deployment configuration and automation run from GitHub repositories and workflows. | [Review the GitHub Actions execution model](docs/deployment-options.md#github-actions) |
+| Azure DevOps | Your organization uses Azure Repos, Azure Pipelines, service connections, variable groups, and agent pools. | [Review the Azure DevOps execution model](docs/deployment-options.md#azure-devops) |
+| Local or scripted execution | You run the SDAF scripts directly from a workstation, deployment host, or other automation environment. | [Review the local execution model](docs/deployment-options.md#local-or-scripted-execution) |
+
+For selection criteria and capability differences, see
+[Choose an SDAF deployment option](docs/deployment-options.md).
+
+## Install SDAF AI skills ![NEW](https://img.shields.io/badge/-NEW-brightgreen?style=flat-square)
+
+The three execution models above are still the main way to run SDAF.
+Alongside them, this repository now ships an **optional** AI-skills hub
+plugin, `azure-sap-automation`, for supported agent CLIs (GitHub Copilot
+CLI, Claude Code, Gemini CLI). SDAF itself does not require these plugins.
+
+The **hub** plugin covers shared SDAF guidance that applies across local,
+Azure DevOps, and GitHub Actions use. The Azure DevOps and GitHub Actions
+bootstrap experiences stay in separate **surface** plugins:
+`azure-sap-automation-devops` and `azure-sap-automation-github`. Install
+those only when you use the matching platform.
+
+If you install the plugins, match them to your execution model:
+
+- **Local / scripted** — install the hub plugin (`azure-sap-automation`)
+  only.
+- **Azure DevOps** — install the hub plugin **and** the Azure DevOps
+  surface plugin (`azure-sap-automation-devops`).
+- **GitHub Actions** — install the hub plugin **and** the GitHub Actions
+  surface plugin (`azure-sap-automation-github`).
+
+Each plugin is independently installable; nothing installs automatically,
+and you run each command yourself. The hub install commands are below. For
+the full 18-skill catalogue, install verification, example prompts,
+limitations, and Azure DevOps or GitHub Actions surface-plugin commands,
+see [`docs/PLUGINS.md`](docs/PLUGINS.md).
+
+### GitHub Copilot CLI
+
+```bash
+copilot plugin marketplace add Azure/sap-automation
+copilot plugin install azure-sap-automation@sap-automation
+```
+
+### Claude Code
+
+```text
+/plugin marketplace add Azure/sap-automation
+/plugin install azure-sap-automation@sap-automation
+```
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/Azure/sap-automation
+```
+
+## Use samples and SAP software definitions
+
+All three execution models use shared configuration examples and SAP software
+definitions. The
+[`Azure/SAP-automation-samples`](https://github.com/Azure/SAP-automation-samples)
+repository contains:
+
+- Terraform examples under `Terraform/WORKSPACES`.
+- SAP application definitions under `SAP`.
+- Bill of materials (BOM) files under `BOM`.
+- Ansible sample inputs under `Ansible`.
+
+## Understand the deployment lifecycle
+
+Complete the SDAF lifecycle in dependency order:
+
+1. Plan Azure architecture, networking, identity, quota, sizing, and cost.
+2. Bootstrap the selected execution environment.
+3. Configure, review, deploy, and validate the control plane.
+4. Configure, review, deploy, and validate a workload zone.
+5. Configure, review, deploy, and validate an SAP system.
+6. Download SAP software and run operating-system, database, and SAP
+   installation.
+7. Operate, update, recover, or remove the environment.
+
+> [!WARNING]
+> SDAF creates billable Azure resources and changes shared infrastructure.
+> Review every Terraform plan, confirm state access, and validate destructive
+> operations before approval.
+
+## Find documentation
+
+Use the [repository documentation hub](docs/index.md) for current
+repository-owned guidance. The hub explains repository responsibilities,
+deployment choices, documentation conventions, and the source used to validate
+capability statements.
+
+Detailed platform procedures remain with the repository that owns the
+workflows, pipelines, scripts, or samples. For repository boundaries, see
+[SDAF repositories](docs/repositories.md).
 
 ## Contributing
 
-If you want to contribute to our project, be sure to review the [contributing guidelines](/CONTRIBUTING.md).
+Before you contribute, review the [contributing guidelines](CONTRIBUTING.md).
 
-We use [GitHub issues](https://github.com/Azure/sap-automation/issues/) for feature requests and bugs.
+Use [GitHub issues](https://github.com/Azure/sap-automation/issues/) for
+feature requests and bugs. Report security vulnerabilities by following
+[SECURITY.md](SECURITY.md).
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
+This project welcomes contributions and suggestions. Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
 the rights to use your contribution. For details, visit <https://cla.opensource.microsoft.com>.
 
@@ -44,4 +147,4 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 
 > Copyright (c) Microsoft Corporation.
 > Licensed under the MIT License.
-> See [LICENSE](/LICENSE) for more information.
+> See [LICENSE](LICENSE) for more information.

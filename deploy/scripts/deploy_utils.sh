@@ -128,7 +128,7 @@ function fail_if_null {
 }
 
 function getAndStoreTerraformStateStorageAccountDetails {
-	local REMOTE_STATE_SA="${1}"
+	REMOTE_STATE_SA="${1}"
 	local config_file_name="${2}"
 
 	echo "Trying to find the storage account:  ${REMOTE_STATE_SA}"
@@ -145,6 +145,7 @@ function getAndStoreTerraformStateStorageAccountDetails {
 		TF_VAR_tfstate_resource_id=$tfstate_resource_id
 		TF_VAR_management_subscription_id=$STATE_SUBSCRIPTION
 
+		export REMOTE_STATE_SA
 		export REMOTE_STATE_RG
 		export STATE_SUBSCRIPTION
 		export TF_VAR_tfstate_resource_id
@@ -341,20 +342,21 @@ function set_azure_cloud_environment() {
 
 	# set the azure cloud environment variables
 	local azure_cloud_environment=''
+	local azure_environment_name=''
 
-	unset AZURE_ENVIRONMENT
+	unset ARM_ENVIRONMENT
 
 	# check the azure environment in which we are running
-	AZURE_ENVIRONMENT=$(az cloud show --query name --output tsv)
+	azure_environment_name=$(az cloud show --query name --output tsv)
 
-	if [ -n "${AZURE_ENVIRONMENT}" ]; then
+	if [ -n "${azure_environment_name}" ]; then
 
-		case $AZURE_ENVIRONMENT in
+		case $azure_environment_name in
 		AzureCloud)
 			azure_cloud_environment='public'
 			;;
 		AzureUSGovernment)
-			azure_cloud_environment='usgov'
+			azure_cloud_environment='usgovernment'
 			;;
 		AzureChinaCloud)
 			azure_cloud_environment='china'
@@ -364,7 +366,7 @@ function set_azure_cloud_environment() {
 			;;
 		esac
 
-		export AZURE_ENVIRONMENT=${azure_cloud_environment}
+		export ARM_ENVIRONMENT=${azure_cloud_environment}
 		echo -e "\t\t[set_azure_cloud_environment]: Azure cloud environment: ${azure_cloud_environment}"
 	else
 		echo -e "\t\t[set_azure_cloud_environment]: Unable to determine the Azure cloud environment"
@@ -569,6 +571,8 @@ function get_region_code() {
 		"centralindia")         export region_code="CEIN" ;;
 		"centralus")            export region_code="CEUS" ;;
 		"centraluseuap")        export region_code="CEUA" ;;
+		"chilecentral")         export region_code="CHCE" ;;
+		"denmarkeast")          export region_code="DEEA" ;;
 		"eastasia")             export region_code="EAAS" ;;
 		"eastus")               export region_code="EAUS" ;;
 		"eastus2")              export region_code="EUS2" ;;
@@ -577,6 +581,7 @@ function get_region_code() {
 		"francecentral")        export region_code="FRCE" ;;
 		"francesouth")          export region_code="FRSO" ;;
 		"germanynorth")         export region_code="GENO" ;;
+		"germanywest")          export region_code="GEWE" ;;
 		"germanywestcentral")   export region_code="GEWC" ;;
 		"indonesiacentral")     export region_code="INCE" ;;
 		"israelcentral")        export region_code="ISCE" ;;
@@ -587,6 +592,9 @@ function get_region_code() {
 		"jioindiawest")         export region_code="JINW" ;;
 		"koreacentral")         export region_code="KOCE" ;;
 		"koreasouth")           export region_code="KOSO" ;;
+		"malaysiawest")         export region_code="MAWE" ;;
+		"mexicocentral")        export region_code="MECE" ;;
+		"newzealandnorth")      export region_code="NZNO" ;;
 		"northcentralus")       export region_code="NCUS" ;;
 		"northeurope")          export region_code="NOEU" ;;
 		"norwayeast")           export region_code="NOEA" ;;
@@ -599,20 +607,24 @@ function get_region_code() {
 		"southcentralusstg")    export region_code="SCUG" ;;
 		"southeastasia")        export region_code="SOEA" ;;
 		"southindia")           export region_code="SOIN" ;;
+		"spaincentral")         export region_code="SPCE" ;;
 		"swedencentral")        export region_code="SECE" ;;
+		"swedensouth")          export region_code="SESO" ;;
 		"switzerlandnorth")     export region_code="SWNO" ;;
 		"switzerlandwest")      export region_code="SWWE" ;;
 		"uaecentral")           export region_code="UACE" ;;
 		"uaenorth")             export region_code="UANO" ;;
 		"uksouth")              export region_code="UKSO" ;;
 		"ukwest")               export region_code="UKWE" ;;
+		"usgovarizona")         export region_code="USAR" ;;
+		"usgovtexas")           export region_code="USTE" ;;
+		"usgovvirginia")        export region_code="USVI" ;;
 		"westcentralus")        export region_code="WCUS" ;;
 		"westeurope")           export region_code="WEEU" ;;
 		"westindia")            export region_code="WEIN" ;;
 		"westus")               export region_code="WEUS" ;;
 		"westus2")              export region_code="WUS2" ;;
 		"westus3")              export region_code="WUS3" ;;
-		"newzealandnorth")      export region_code="NZNO" ;;
 		*)                      export region_code="UNKN" ;;
 	esac
 }
