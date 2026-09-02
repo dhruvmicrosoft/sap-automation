@@ -27,3 +27,9 @@
 # HANA instance number. Used by hdbsql -i so the daemon resolves the
 # right SQL port (3<NN>13 for SYSTEMDB, 3<NN>15 for tenants).
 db_instance_number:                     "00"
+
+# HANA SYSTEMDB SQL endpoint. The role runs hdbsql directly on the HANA
+# host, so local access is the reliable default. Override db_sql_host for
+# clustered systems that require a separate database virtual hostname.
+db_sql_host:                            "localhost"
+db_sql_port:                            "3{{ db_instance_number }}13"

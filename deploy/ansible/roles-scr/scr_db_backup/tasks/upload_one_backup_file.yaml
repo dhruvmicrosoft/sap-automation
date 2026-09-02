@@ -23,6 +23,9 @@
 #                             controller and as the blob name
 #                             (set by the parent task using
 #                             "<inventory_hostname>__<original basename>")
+#   _db_folder                HANA backup folder, such as DB_SYSTEMDB
+#   _database_name            SYSTEMDB or the tenant database name
+#   _database_type            SYSTEMDB or TENANT
 #
 # Disk footprint on the controller while this runs:
 #   ~1 x size(_bk)   (single copy: we stage rsync directly into
@@ -113,6 +116,30 @@
                                         # across hosts and tenants (the role uses subdir+basename
                                         # as the dict key when subdir is non-empty).
     subdir:                             "{{ _blob_subdir }}"
+    file_metadata:
+      artifact_type:                    hana_backup_part
+      db_sid:                           "{{ db_sid | upper }}"
+      database_name:                    "{{ _database_name }}"
+      database_type:                    "{{ _database_type }}"
+      database_folder:                  "{{ _db_folder }}"
+      source_host:                      "{{ inventory_hostname }}"
+
+
+- name:                                 "scr_db_backup: Record uploaded part in restore manifest"
+  ansible.builtin.set_fact:
+    _backup_uploaded_files: >-
+      {{ _backup_uploaded_files + [{
+        'source_path': _bk.path,
+        'relative_restore_path': (_bk.path | regex_replace('^' + (_backup_dir | regex_escape) + '/?', '')),
+        'blob_name': (scr_log_function_remote_filestore_dir + '/' + _blob_subdir + '/' + _staged_basename),
+        'db_sid': (db_sid | upper),
+        'database_name': _database_name,
+        'database_type': _database_type,
+        'database_folder': _db_folder,
+        'size': _bk.size,
+        'checksum_algorithm': 'sha1',
+        'checksum': _store_source_stat.stat.checksum
+      }] }}
 
 
 # scr_log_function's per-iteration cleanup (the "Cleanup local

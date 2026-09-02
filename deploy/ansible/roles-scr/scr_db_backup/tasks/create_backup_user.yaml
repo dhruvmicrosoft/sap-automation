@@ -45,7 +45,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "SELECT USER_NAME FROM SYS.USERS WHERE USER_NAME = '{{ _backup_user | upper }}'"
   args:
     executable:                         /bin/bash
@@ -91,7 +91,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "CREATE USER {{ _backup_user }} PASSWORD \"{{ _backup_pwd }}\" NO FORCE_FIRST_PASSWORD_CHANGE"
   args:
     executable:                         /bin/bash
@@ -129,9 +129,9 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "GRANT BACKUP ADMIN, CATALOG READ, DATABASE ADMIN TO {{ _backup_user }}"
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "ALTER USER {{ _backup_user }} DISABLE PASSWORD LIFETIME"
   args:
     executable:                         /bin/bash
@@ -142,6 +142,29 @@
   no_log:                               true
 
 
+- name:                                 "scr_db_backup: Fail clearly if HANA is in license-lock mode"
+  ansible.builtin.fail:
+    msg: |-
+      HANA SYSTEMDB on {{ inventory_hostname }} is running in license-lock mode.
+      HANA error 437 allows only license-management commands, so user grants,
+      configuration changes, and backups cannot run.
+
+      Install a valid HANA license in SYSTEMDB, then rerun this playbook.
+      As {{ db_sid | lower }}adm, license installation uses a valid SAP HANA
+      license file and the SYSTEM credentials, for example:
+        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM \
+          "SET SYSTEM LICENSE '<license-file-content>'"
+
+      Do not place the license text or SYSTEM password in this playbook or its
+      logs. SAP HANA Cockpit or SAP HANA Studio can also install the license.
+
+      Original stderr:
+      {{ _backup_user_grant.stderr | default('') | indent(2) }}
+  when:
+    - (_backup_user_grant.rc | default(1)) != 0
+    - "'only commands for license handling are allowed' in (_backup_user_grant.stderr | default('') | lower)"
+
+
 - name:                                 "scr_db_backup: Fail if GRANT/ALTER returned non-zero"
   ansible.builtin.fail:
     msg: |-
@@ -149,7 +172,9 @@
       rc     = {{ _backup_user_grant.rc     | default('?') }}
       stderr = {{ _backup_user_grant.stderr | default('') }}
       stdout = {{ _backup_user_grant.stdout | default('') }}
-  when:                                 (_backup_user_grant.rc | default(1)) != 0
+  when:
+    - (_backup_user_grant.rc | default(1)) != 0
+    - "'only commands for license handling are allowed' not in (_backup_user_grant.stderr | default('') | lower)"
 
 
 - name:                                 "scr_db_backup: Report backup_operator provisioning result"
@@ -179,7 +204,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u {{ _backup_user }} -p "$P" \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u {{ _backup_user }} -p "$P" \
                                           -A "SELECT CURRENT_USER FROM DUMMY"
   args:
     executable:                         /bin/bash

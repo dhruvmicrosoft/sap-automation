@@ -27,7 +27,7 @@
 # Optional extra-vars (with defaults):
 #   db_backup_type      'INCREMENTAL' (default) | 'DIFFERENTIAL' | ''  (= full / complete)
 #   db_backup_scope     'FOR FULL SYSTEM' (default) | 'FOR <tenant_name>'
-#   db_backup_prefix    Default 'SCR_<SID>_<UTC timestamp>'.
+#   db_backup_prefix    Default 'SCR_<SID>_<SOURCE|DEST>_<UTC timestamp>'.
 #   db_backup_dir       Default '/hana/backup'. ABSOLUTE directory on
 #                       every DB host where HANA must write the backup.
 #   db_backup_dry_run   Default false. When true, the role runs the
@@ -70,7 +70,7 @@
   ansible.builtin.set_fact:
     _backup_type:                       "{{ db_backup_type   | default('INCREMENTAL') }}"
     _backup_scope:                      "{{ db_backup_scope  | default('FOR FULL SYSTEM') }}"
-    _backup_prefix:                     "{{ db_backup_prefix | default('SCR_' + (db_sid | upper) + '_' + (now(utc=true, fmt='%Y%m%d_%H%M%S'))) }}"
+    _backup_prefix:                     "{{ db_backup_prefix | default('SCR_' + (db_sid | upper) + '_' + (_db_side | upper) + '_' + (now(utc=true, fmt='%Y%m%d_%H%M%S'))) }}"
     _backup_dir:                        "{{ db_backup_dir    | default('/hana/backup') }}"
     _dry_run:                           "{{ db_backup_dry_run | default(false) | bool }}"
     # Controller-side staging directory for rsync.
@@ -176,7 +176,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -x -A -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" \
+                                        hdbsql -x -A -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" \
                                           "SELECT '@@@' || COALESCE((SELECT VALUE FROM M_INIFILE_CONTENTS WHERE FILE_NAME='global.ini' AND SECTION='persistence' AND KEY='basepath_databackup' AND LAYER_NAME='SYSTEM'), '__NOT_SET__') || '@@@' FROM DUMMY"
   args:
     executable:                         /bin/bash
@@ -263,7 +263,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "ALTER SYSTEM ALTER CONFIGURATION ('global.ini', 'SYSTEM') SET ('persistence', 'basepath_databackup') = '{{ _backup_dir }}' WITH RECONFIGURE"
       args:
         executable:                     /bin/bash
@@ -298,7 +298,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u {{ _backup_user }} -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u {{ _backup_user }} -p "$P" -A \
                                           "BACKUP DATA {{ _backup_type }} {{ _backup_scope }} USING FILE ('{{ _backup_prefix }}')"
       args:
         executable:                     /bin/bash
@@ -456,6 +456,12 @@
       delegate_to:                      localhost
 
 
+    - name:                             "scr_db_backup: Initialize restore manifest"
+      ansible.builtin.set_fact:
+        _backup_manifest_name:          "{{ _backup_prefix }}__{{ _db_side }}__{{ inventory_hostname }}__manifest.json"
+        _backup_uploaded_files:         []
+
+
     # Pre-flight: verify the staging filesystem has enough free space
     # to hold the largest single backup file (we stage at the role's
     # filestore_dir so its copy step is a no-op - peak disk is 1x,
@@ -490,9 +496,9 @@
 
 
     # Blob layout under scr_log_function_remote_filestore_dir:
-    #   FILE_STORE/<host>/<DB_folder>/<original basename>
+    #   FILE_STORE/<SID>/<host>/<DB_folder>/<original basename>
     #
-    # We pass `subdir: "<host>/<DB_folder>"` to scr_log_function so it
+    # We pass `subdir: "<SID>/<host>/<DB_folder>"` to scr_log_function so it
     # uploads the blob under that virtual folder in Azure Blob Storage
     # (instead of flattening every file into FILE_STORE/<basename>).
     # The <host> level disambiguates scale-out workers that write parts
@@ -512,9 +518,84 @@
       vars:
         _stage_dir:                     "{{ _backup_stage_dir }}"
         _staged_basename:               "{{ _bk.path | basename }}"
-        _blob_subdir:                   "{{ inventory_hostname }}/{{ _bk.path | dirname | basename }}"
+        _db_folder:                     "{{ _bk.path | dirname | basename }}"
+        _database_name:                 "{{ (_bk.path | dirname | basename) | regex_replace('^DB_', '') }}"
+        _database_type:                 "{{ 'SYSTEMDB' if ((_bk.path | dirname | basename) == 'DB_SYSTEMDB') else 'TENANT' }}"
+        _blob_subdir:                   "{{ db_sid | upper }}/{{ inventory_hostname }}/{{ _bk.path | dirname | basename }}"
         _bk_total_count:                "{{ _backup_files.files | length }}"
         _bk_total_bytes:                "{{ _backup_files.files | map(attribute='size') | sum }}"
+
+
+    - name:                             "scr_db_backup: Write restore manifest on controller"
+      ansible.builtin.copy:
+        dest:                           "{{ _backup_stage_dir }}/{{ _backup_manifest_name }}"
+        mode:                           "0600"
+        content: >-
+          {{ {
+            'schema_version': 2,
+            'job_id': scr_job_id,
+            'run_id': scr_run_id,
+            'backup_side': _db_side,
+            'source_host': inventory_hostname,
+            'db_sid': db_sid,
+            'backup_prefix': _backup_prefix,
+            'backup_root': _backup_dir,
+            'created_utc': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+            'files': _backup_uploaded_files
+          } | to_nice_json }}
+      delegate_to:                      localhost
+
+
+    - name:                             "scr_db_backup: Upload restore manifest after all backup parts"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       file
+        action:                         store
+        payload:                        "{{ _backup_stage_dir }}/{{ _backup_manifest_name }}, localhost"
+        subdir:                         "manifests/{{ db_sid | upper }}/{{ inventory_hostname }}"
+        file_metadata:
+          artifact_type:                hana_backup_manifest
+          db_sid:                       "{{ db_sid | upper }}"
+          source_host:                  "{{ inventory_hostname }}"
+          backup_prefix:                "{{ _backup_prefix }}"
+          backup_side:                  "{{ _db_side }}"
+
+
+    - name:                             "scr_db_backup: Verify restore manifest exists in Azure Blob Storage"
+      ansible.builtin.command:
+        argv:
+          - az
+          - storage
+          - blob
+          - exists
+          - --account-name
+          - "{{ scr_azure_storage_account }}"
+          - --container-name
+          - "{{ scr_azure_container }}"
+          - --name
+          - "{{ scr_log_function_remote_filestore_dir }}/manifests/{{ db_sid | upper }}/{{ inventory_hostname }}/{{ _backup_manifest_name }}"
+          - --auth-mode
+          - login
+          - --query
+          - exists
+          - --output
+          - tsv
+      register:                         _backup_manifest_exists
+      delegate_to:                      localhost
+      changed_when:                     false
+      failed_when:                      (_backup_manifest_exists.stdout | trim | lower) != 'true'
+
+
+    - name:                             "scr_db_backup: LOG - Restore manifest available"
+      ansible.builtin.include_role:
+        name:                           roles-scr/scr_log_function
+      vars:
+        activity:                       log_summary
+        action:                         store
+        payload: >-
+                                        RESTORE MANIFEST side={{ _db_side }} prefix={{ _backup_prefix }} -
+                                        {{ scr_log_function_remote_filestore_dir }}/manifests/{{ db_sid | upper }}/{{ inventory_hostname }}/{{ _backup_manifest_name }}
 
 
     - name:                             "scr_db_backup: Report streamed upload result"
@@ -523,8 +604,10 @@
           - "Host:        {{ inventory_hostname }}"
           - "Files:       {{ _backup_files.files | length }}"
           - "Bytes:       {{ _backup_files.files | map(attribute='size') | sum }}"
+          - "Backup side: {{ _db_side }}"
           - "Source:      {{ _backup_dir }} on {{ inventory_hostname }}"
           - "Via:         rsync -> controller staging -> scr_log_function -> FILE_STORE"
+          - "Manifest:    {{ scr_log_function_remote_filestore_dir }}/manifests/{{ db_sid | upper }}/{{ inventory_hostname }}/{{ _backup_manifest_name }}"
           - "Job / Run:   job_{{ scr_job_id | default('unknown') }} / run_{{ scr_run_id | default('unknown') }}"
 
 
@@ -542,7 +625,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "ALTER SYSTEM ALTER CONFIGURATION ('global.ini', 'SYSTEM') SET ('persistence', 'basepath_databackup') = '{{ _basepath_orig_value }}' WITH RECONFIGURE"
       args:
         executable:                     /bin/bash
@@ -563,7 +646,7 @@
                                         set -o pipefail
                                         . "$HOME/.sapenv.sh"
                                         read -r P
-                                        hdbsql -n 127.0.0.1:3{{ db_instance_number }}13 -d SYSTEMDB -u SYSTEM -p "$P" -A \
+                                        hdbsql -n {{ db_sql_host }}:{{ db_sql_port }} -d SYSTEMDB -u SYSTEM -p "$P" -A \
                                           "ALTER SYSTEM ALTER CONFIGURATION ('global.ini', 'SYSTEM') UNSET ('persistence', 'basepath_databackup') WITH RECONFIGURE"
       args:
         executable:                     /bin/bash

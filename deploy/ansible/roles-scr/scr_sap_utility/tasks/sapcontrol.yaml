@@ -269,16 +269,16 @@
 #                                           -function   StopWait ABAP {{ _timeout }} {{ _delay }}
 
 
-- name:
+- name:                                 "SCR UTILITY: Stop SAP ABAP instance and wait for shutdown"
   become:                               true
-  become_user:                          x91adm
+  become_user:                          "{{ sapsid | lower }}adm"
   become_flags:                         '--login'                               # Ensures that the user's login shell is invoked, which can be important for loading environment variables and configurations specific to that user, especially for SAP administrative tasks where environment setup is crucial.
   ansible.builtin.shell:                                                        # Using shell instead of command to allow for the use of shell features if needed in the future, and to ensure that the command is executed in a login shell context due to the become_flags.
     cmd: |
                                         sapcontrol                          \
-                                          -prot       NI_HTTPS              \
-                                          -nr         00                    \
+                                          -prot       {{ sapcontrol_protocol | default('NI_HTTPS') }} \
+                                          -nr         {{ sap_instance_number | default('00') }} \
                                           -host       localhost             \
-                                          -function   StartWait ABAP {{ _timeout }} {{ _delay }}
+                                          -function   StopWait ABAP {{ sap_stop_timeout | default(_timeout) }} {{ sap_stop_delay | default(_delay) }}
 
 ...

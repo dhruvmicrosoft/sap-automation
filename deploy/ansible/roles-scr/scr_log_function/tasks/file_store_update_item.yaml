@@ -126,7 +126,7 @@
                                         az storage blob upload
                                           --account-name   {{ scr_azure_storage_account }}
                                           --container-name {{ scr_azure_container }}
-                                          --name           {{ scr_log_function_remote_filestore_dir }}/{{ _file_name | basename }}
+                                          --name           {{ scr_log_function_remote_filestore_dir }}/{{ _blob_subpath }}
                                           --file           {{ _local_file_path }}
                                           --overwrite
                                           --auth-mode      login
@@ -153,12 +153,12 @@
 - name:                                 "SCR Log Function [file/{{ action }}] - Update file_store"
   ansible.builtin.set_fact:
     file_store:                         "{{ (file_store | default({})) | combine({
-                                            (_file_name | basename): {
+                                            _blob_subpath: ({
                                               'file_host': _file_host,
-                                              'blob_name': (scr_log_function_remote_filestore_dir ~ '/' ~ (_file_name | basename)),
+                                              'blob_name': (scr_log_function_remote_filestore_dir ~ '/' ~ _blob_subpath),
                                               'checksum': (_store_source_stat.stat.checksum | default('')),
                                               'size': (_store_source_stat.stat.size | default(0))
-                                              }
+                                              } | combine(file_metadata | default({})))
                                             },
                                             recursive=true)
                                         }}"

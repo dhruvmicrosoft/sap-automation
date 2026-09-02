@@ -251,7 +251,9 @@
         action:                         store
         payload: >-
                                         STEP 3 : HANA backup taken and uploaded to
-                                        scr-runs/job_{{ scr_job_id }}/run_{{ scr_run_id }}/FILE_STORE/<host>/DB_*/...
+                                        scr-runs/job_{{ scr_job_id }}/FILE_STORE/{{ scr_source_sid | upper }}/<host>/DB_*/...;
+                                        restore manifest uploaded to
+                                        scr-runs/job_{{ scr_job_id }}/FILE_STORE/manifests/{{ scr_source_sid | upper }}/<host>/...
       run_once:                         true
 
 

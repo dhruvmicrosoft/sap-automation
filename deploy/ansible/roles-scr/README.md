@@ -9,6 +9,8 @@ This directory contains all Ansible roles used by the **SAP System Copy and Refr
 ```
 roles-scr/
 ├── scr_common/              # Shared configuration and utility task files
+├── scr_db_backup/           # HANA backup creation, upload, and restore manifest
+├── scr_db_restore/          # Manifest-driven backup retrieval and DB-node staging
 ├── scr_kernel/              # SAP and DB kernel inventory, compare, and sync
 ├── scr_keys/                # Azure Key Vault credential retrieval
 ├── scr_log_function/        # Generic logging and Azure Blob Storage function
@@ -22,6 +24,8 @@ roles-scr/
 | Role | Purpose | Called As |
 |---|---|---|
 | `scr_common` | Central defaults file; shared utility tasks | `vars_files:` (defaults) or `include_role tasks_from:` (tasks) |
+| `scr_db_backup` | Creates HANA backups and publishes a checksummed restore manifest | `include_role` |
+| `scr_db_restore` | Retrieves a manifest and verifies all backup files on the destination DB host | `include_role` |
 | `scr_kernel` | SAP and DB kernel inventory, compare, and sync report | `include_role` |
 | `scr_keys` | Pulls SSH credentials from Azure Key Vault via MSI | `include_role` |
 | `scr_log_function` | Generic log appending and Azure Blob Storage CRUD (summary, detail, object, file) | `include_role` |
